@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Analyse Amazon JSON avec LLM</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      header {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      header h1 {
+        color: #2c3e50;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .app-container {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 30px;
+      }
+
+      .main-panel {
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      .side-panel {
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Formulaire */
+      .search-form {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 30px;
+      }
+
+      .search-input {
+        flex: 1;
+        padding: 15px 20px;
+        font-size: 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        transition: all 0.3s;
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .search-btn {
+        padding: 15px 30px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .search-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      /* Conversation */
+      .conversation {
+        margin-bottom: 30px;
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
+
+      .message {
+        margin-bottom: 15px;
+        padding: 15px 20px;
+        border-radius: 10px;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .user-message {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        margin-left: 20%;
+        border-bottom-right-radius: 5px;
+      }
+
+      .bot-message {
+        background: #f8f9fa;
+        color: #333;
+        margin-right: 20%;
+        border-bottom-left-radius: 5px;
+        border-left: 4px solid #667eea;
+      }
+
+      /* Tableau des résultats */
+      .results-section {
+        margin-top: 40px;
+      }
+
+      .results-title {
+        color: #2c3e50;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      }
+
+      .results-table th {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+      }
+
+      .results-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .results-table tr:hover {
+        background-color: #f8f9fa;
+      }
+
+      .results-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* Panneau latéral */
+      .query-section,
+      .response-section {
+        margin-bottom: 30px;
+      }
+
+      .section-title {
+        color: #2c3e50;
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .query-box {
+        background: #1a1a1a;
+        color: #00ff88;
+        padding: 20px;
+        border-radius: 10px;
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .response-box {
+        background: #fff8e1;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 4px solid #ffb300;
+      }
+
+      /* État vide */
+      .empty-state {
+        text-align: center;
+        padding: 50px 20px;
+        color: #666;
+      }
+
+      .empty-state i {
+        font-size: 48px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(45deg, #5a6fd8, #6a4190);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🔍 Analyse des Produits Amazon avec LLM</h1>
+        <p>
+          Posez une question en français et obtenez les résultats en temps réel
+        </p>
+      </header>
+
+      <div class="app-container">
+        <!-- Panneau principal -->
+        <div class="main-panel">
+          <!-- Formulaire de recherche -->
+          <form method="POST" class="search-form">
+            <input
+              type="text"
+              name="question"
+              class="search-input"
+              placeholder="Exemple: 'produits avec rating > 4' ou 'câbles iPhone'..."
+              value="{{ question }}"
+              required
+            />
+            <button type="submit" class="search-btn">🔍 Rechercher</button>
+          </form>
+
+          <!-- Conversation -->
+          <div class="conversation">
+            {% for msg in conversation %} {% if msg.role == 'user' %}
+            <div class="message user-message">
+              <strong>👤 Vous:</strong> {{ msg.text }}
+            </div>
+            {% else %}
+            <div class="message bot-message">
+              <strong>🤖 Assistant:</strong> {{ msg.text }}
+            </div>
+            {% endif %} {% endfor %}
+          </div>
+
+          <!-- Tableau des résultats - AFFICHAGE FORCÉ -->
+          <div class="results-section">
+            <h2 class="results-title">📊 Résultats de la Recherche</h2>
+
+            {% if results and results|length > 0 %}
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Produit</th>
+                  <th>Catégorie</th>
+                  <th>Note</th>
+                  <th>Prix</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results %}
+                <tr>
+                  <td>{{ item.product_name }}</td>
+                  <td>{{ item.category }}</td>
+                  <td>{{ item.rating }}</td>
+                  <td>{{ item.discounted_price }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            <p style="margin-top: 10px; color: #666; font-size: 0.9em">
+              Affichage de {{ results|length }} produit(s)
+            </p>
+            {% elif results and results|length == 0 %}
+            <div class="empty-state">
+              <div style="font-size: 48px; margin-bottom: 20px">🔍</div>
+              <h3 style="color: #e74c3c; margin-bottom: 10px">
+                Aucun produit trouvé
+              </h3>
+              <p>Essayez avec une autre requête ou moins de restrictions</p>
+            </div>
+            {% else %}
+            <div class="empty-state">
+              <div style="font-size: 48px; margin-bottom: 20px">📋</div>
+              <h3 style="color: #3498db; margin-bottom: 10px">
+                En attente de recherche
+              </h3>
+              <p>Posez une question ci-dessus pour voir les résultats ici</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Panneau latéral -->
+        <div class="side-panel">
+          <!-- Requête MongoDB -->
+          <div class="query-section">
+            <h3 class="section-title">⚙️ Requête MongoDB Générée</h3>
+            {% if sql_query %}
+            <div class="query-box">{{ sql_query }}</div>
+            {% else %}
+            <div class="query-box">{}</div>
+            {% endif %}
+          </div>
+
+          <!-- Réponse LLM -->
+          <div class="response-section">
+            <h3 class="section-title">💬 Réponse du Système</h3>
+            {% if response %}
+            <div class="response-box">{{ response }}</div>
+            {% else %}
+            <div class="response-box">
+              <p style="color: #666; font-style: italic">
+                La réponse apparaîtra ici après votre recherche...
+              </p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
