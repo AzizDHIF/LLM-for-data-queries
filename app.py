@@ -2,7 +2,7 @@ import os
 import json
 from flask import Flask, render_template, request, session
 from llm import (
-    init_data, 
+    # init_data, 
     init_groq_client, 
     generate_mongodb_query, 
     execute_mongodb_query
@@ -321,7 +321,9 @@ print("🚀 Initialisation de l'application...")
 print("=" * 50)
 
 # Initialiser les données
-init_data()
+from connectors.mongodb_connector import DataLoader
+loader = DataLoader(path="data/mongo_amazon.json")
+df = loader.init_data()
 
 # Initialiser le client Groq
 init_groq_client()

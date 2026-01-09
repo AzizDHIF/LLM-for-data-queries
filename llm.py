@@ -4,57 +4,43 @@ from groq import Groq
 import os
 import re
 from typing import Dict, List, Any, Tuple
+from connectors.mongodb_connector import *
+from dotenv import load_dotenv  # Ajoutez cette importation
+
+# Charger les variables d'environnement
+load_dotenv()
 
 # Variables globales
 df = None
 client = None
 groq_available = False
 
-def init_data():
-    """Initialise les données depuis le fichier JSON"""
-    global df
-    
-    try:
-        with open("data/mongo_amazon.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-        print(f"✅ Données chargées : {len(data)} produits")
-    except FileNotFoundError:
-        print("❌ Erreur : Fichier 'data/mongo_amazon.json' non trouvé")
-        data = []
-    except json.JSONDecodeError:
-        print("❌ Erreur : Format JSON invalide")
-        data = []
-    
-    if not data:
-        print("⚠️ Aucune donnée chargée, création d'un DataFrame vide")
-        df = pd.DataFrame()
-    else:
-        df = pd.DataFrame(data)
-        print(f"✅ DataFrame créé avec {len(df)} lignes et {len(df.columns)} colonnes")
-    
-    if not df.empty:
-        # Nettoyer rating
-        if 'rating' in df.columns:
-            df['rating'] = pd.to_numeric(df['rating'].astype(str).str.replace(',', '', regex=False).fillna('0'), errors='coerce')
-        
-        # Nettoyer les prix
-        for price_col in ['discounted_price', 'actual_price']:
-            if price_col in df.columns:
-                df[price_col] = pd.to_numeric(
-                    df[price_col].astype(str).str.replace(r'[^\d.]', '', regex=True).fillna('0'),
-                    errors='coerce'
-                )
-        
-        print("✅ Colonnes numériques nettoyées")
-    
-    return df
+
+# Créer une instance de DataLoader
+loader = DataLoader(path="data/mongo_amazon.json")
+
+# init_data() devient une méthode de DataLoader
+df = loader.init_data()
+
+print(df.head())
+print(df.dtypes)
+
 
 def init_groq_client():
     """Initialise le client Groq"""
     global client, groq_available
     
     try:
-        api_key = os.getenv("GROQ_API_KEY") 
+        # Utiliser os.getenv() pour récupérer la clé API
+        api_key = os.getenv("GROQ_API_KEY")
+        
+        if not api_key or api_key == "votre_clé_api_groq_ici":
+            print("⚠️ GROQ_API_KEY non configurée ou invalide")
+            print("💡 Conseil: Ajoutez GROQ_API_KEY=votre_clé_réelle dans le fichier .env")
+            client = None
+            groq_available = False
+            return client, groq_available
+            
         client = Groq(api_key=api_key)
         print("✅ Client Groq initialisé")
         groq_available = True
@@ -64,6 +50,8 @@ def init_groq_client():
         groq_available = False
     
     return client, groq_available
+
+# Le reste du code reste inchangé...
 
 def detect_query_type(question: str) -> str:
     """Détecte le type de requête demandée"""

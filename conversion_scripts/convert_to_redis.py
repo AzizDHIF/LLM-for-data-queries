@@ -2,29 +2,59 @@ import pandas as pd
 import redis
 import json
 
-# Charger le CSV
+# =========================
+# 1. Connexion à Redis
+# =========================
+r = redis.Redis(
+    host="localhost",
+    port=6379,
+    db=0,
+    decode_responses=True
+)
+
+# =========================
+# 2. Charger le CSV
+# =========================
 df = pd.read_csv("data/amazon.csv")
 
-# Séparer en deux "tables"
-products_cols = ["product_id", "product_name", "category", "discounted_price",
-                 "actual_price", "discount_percentage", "rating", "rating_count",
-                 "about_product", "img_link", "product_link"]
-reviews_cols = ["review_id", "product_id", "user_id", "user_name",
-                "review_title", "review_content"]
+# =========================
+# 3. Colonnes
+# =========================
+products_cols = [
+    "product_id", "product_name", "category",
+    "discounted_price", "actual_price",
+    "discount_percentage", "rating", "rating_count",
+    "about_product", "img_link", "product_link"
+]
 
+reviews_cols = [
+    "review_id", "product_id", "user_id",
+    "user_name", "review_title", "review_content"
+]
+
+# =========================
+# 4. Séparer produits / reviews
+# =========================
 products_df = df[products_cols].drop_duplicates("product_id")
 reviews_df = df[reviews_cols]
 
-# Connexion à Redis
-r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+# =========================
+# 5. Nettoyer Redis (optionnel)
+# =========================
+# ⚠️ Décommente si tu veux repartir de zéro
+# r.flushdb()
 
-# Pour chaque produit, stocker les données et les reviews
+# =========================
+# 6. Insertion dans Redis
+# =========================
 for _, prod in products_df.iterrows():
-    prod_id = prod["product_id"]
-    
-    # Stocker le produit comme un hash
-    product_key = f"product:{prod_id}"
+    product_id = prod["product_id"]
+
+    # -------- Produit : HASH --------
+    product_key = f"product:{product_id}"
+
     r.hset(product_key, mapping={
+        "product_id": product_id,
         "product_name": prod["product_name"],
         "category": prod["category"],
         "discounted_price": prod["discounted_price"],
@@ -36,19 +66,22 @@ for _, prod in products_df.iterrows():
         "img_link": prod["img_link"],
         "product_link": prod["product_link"]
     })
-    
-    # Obtenir toutes les reviews de ce produit et stocker comme liste JSON
-    prod_reviews = []
-    for _, rev in reviews_df[reviews_df["product_id"] == prod_id].iterrows():
-        prod_reviews.append({
+
+    # -------- Reviews : LIST --------
+    reviews_key = f"product:{product_id}:reviews"
+
+    product_reviews = reviews_df[reviews_df["product_id"] == product_id]
+
+    for _, rev in product_reviews.iterrows():
+        review_doc = {
             "review_id": rev["review_id"],
             "user_id": rev["user_id"],
             "user_name": rev["user_name"],
             "review_title": rev["review_title"],
             "review_content": rev["review_content"]
-        })
-    
-    if prod_reviews:
-        r.set(f"product:{prod_id}:reviews", json.dumps(prod_reviews))
+        }
 
-print("✅ Conversion CSV → Redis terminée !")
+        # Chaque review est stockée comme JSON dans une LIST
+        r.rpush(reviews_key, json.dumps(review_doc))
+
+print("✅ Conversion CSV → Redis terminée avec succès !")
