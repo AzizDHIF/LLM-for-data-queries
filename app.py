@@ -536,6 +536,11 @@ def index():
             
             elif result_type == 'group':
                 response_text = f"📊 Résultats groupés par {metadata.get('group_by', 'catégorie')} : {metadata['groups']} groupes"
+                
+            elif result_type == 'general_info':
+                response_text = "ℹ️ Informations générales\n"
+                # for k, v in metadata.items():
+                #     response_text += f"{k} : {v}\n"
             
             elif result_type == 'select':
                 if results:

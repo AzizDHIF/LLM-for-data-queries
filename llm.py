@@ -69,10 +69,14 @@ def detect_query_type(question: str) -> str:
     """Détecte le type de requête demandée"""
     question_lower = question.lower()
     
+    # Requêtes générales sur la base
+    if any(word in question_lower for word in ['colonnes', 'types', 'noms des colonnes', 'nombre de lignes', 'plage', 'range', 'résumé']):
+        return 'general_info'
+    
     # Vérifier d'abord les groupements explicites
     if any(word in question_lower for word in ['grouper', 'group by', 'par catégorie', 'par type', 'par prix', 'by price']):
         return 'group'
-    
+
     # Agrégations - plus strictes pour détecter avant les autres
     if any(word in question_lower for word in ['moyenne', 'moyen', 'average', 'avg']):
         return 'avg'
@@ -94,7 +98,8 @@ def detect_query_type(question: str) -> str:
 
 def generate_mongodb_query(question: str) -> Dict[str, Any]:
     """
-    Génère une requête MongoDB structurée avec le type d'opération
+    Génère une requête MongoDB structurée avec le type d'opération,
+    et gère aussi les requêtes 'general_info' sur le DataFrame.
     """
     question_lower = question.lower().strip()
     query_type = detect_query_type(question)
@@ -107,8 +112,39 @@ def generate_mongodb_query(question: str) -> Dict[str, Any]:
         'sort': None,
         'limit': None
     }
-    
-    # Cas simples avec règles
+
+    # --- Nouveau : traitement des requêtes générales ---
+    if query_type == 'general_info':
+        from pandas.api.types import is_numeric_dtype
+        info = {}
+
+        # Colonnes
+        if 'colonnes' in question_lower or 'noms des colonnes' in question_lower:
+            info['columns'] = list(df.columns)
+
+        # Types
+        if 'types' in question_lower or 'type des colonnes' in question_lower:
+            info['dtypes'] = df.dtypes.apply(lambda x: str(x)).to_dict()
+
+        # Nombre de lignes
+        if 'nombre de lignes' in question_lower or 'combien de lignes' in question_lower:
+            info['num_rows'] = len(df)
+
+        # Plage/statistiques des champs numériques
+        numeric_cols = [c for c in df.columns if is_numeric_dtype(df[c])]
+        for col in numeric_cols:
+            if col in question_lower or 'plage' in question_lower or 'range' in question_lower:
+                info[col] = {
+                    'min': df[col].min(),
+                    'max': df[col].max(),
+                    'mean': df[col].mean(),
+                    'std': df[col].std()
+                }
+
+        result['info'] = info
+        return result
+
+    # --- Cas simples avec règles existantes ---
     if "tous les produits" in question_lower or (query_type == 'select' and len(question_lower.split()) <= 3):
         print(f"🔍 Règle: Tous les produits (type: {query_type})")
         return result
@@ -139,7 +175,6 @@ def generate_mongodb_query(question: str) -> Dict[str, Any]:
     # Catégories
     if "electronics" in question_lower or "électronique" in question_lower:
         result['filter'] = {"category": {"$regex": "electronics", "$options": "i"}}
-        # Si c'est une agrégation, ajouter le field approprié
         if query_type in ['avg', 'sum', 'max', 'min']:
             result['aggregation'] = {'field': 'discounted_price', 'operation': query_type}
         print(f"🔍 Règle: Catégorie Electronics (type: {query_type})")
@@ -147,9 +182,7 @@ def generate_mongodb_query(question: str) -> Dict[str, Any]:
     
     if "câble" in question_lower or "cable" in question_lower:
         result['filter'] = {"category": {"$regex": "cable", "$options": "i"}}
-        # Si c'est une agrégation, ajouter le field approprié
         if query_type in ['avg', 'sum', 'max', 'min']:
-            # Déterminer le champ selon les mots-clés
             if 'prix' in question_lower or 'price' in question_lower:
                 result['aggregation'] = {'field': 'discounted_price', 'operation': query_type}
             elif 'rating' in question_lower or 'note' in question_lower:
@@ -408,6 +441,9 @@ def execute_mongodb_query(query_dict: Dict[str, Any]) -> Tuple[str, List[Dict], 
             data = result.to_dict('records')
             metadata = {'group_by': group_by, 'groups': len(result)}
             return 'group', data, metadata
+        
+        elif query_dict.get('type') == 'general_info':
+            return 'general_info', query_dict.get('info', {}), {'count': len(df), 'columns': list(df.columns)}
         
         else:  # select
             # Trier si spécifié
