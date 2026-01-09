@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Analyse Amazon JSON avec LLM</title>
+    <title>Analyse Amazon avec NLP → MongoDB</title>
     <style>
       * {
         box-sizing: border-box;
@@ -19,7 +19,7 @@
       }
 
       .container {
-        max-width: 1400px;
+        max-width: 1600px;
         margin: 0 auto;
         padding: 20px;
       }
@@ -42,6 +42,11 @@
         -webkit-text-fill-color: transparent;
       }
 
+      .subtitle {
+        color: #666;
+        font-size: 1.1rem;
+      }
+
       .app-container {
         display: grid;
         grid-template-columns: 2fr 1fr;
@@ -60,6 +65,43 @@
         padding: 30px;
         border-radius: 15px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Exemples de requêtes */
+      .examples {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+
+      .examples h3 {
+        color: #2c3e50;
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+      }
+
+      .example-queries {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .example-tag {
+        background: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        border: 2px solid #667eea;
+        color: #667eea;
+        transition: all 0.2s;
+      }
+
+      .example-tag:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
       }
 
       /* Formulaire */
@@ -142,15 +184,21 @@
         border-left: 4px solid #667eea;
       }
 
-      /* Tableau des résultats */
+      /* Résultats */
       .results-section {
         margin-top: 40px;
+      }
+
+      .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
       }
 
       .results-title {
         color: #2c3e50;
         font-size: 1.5rem;
-        margin-bottom: 20px;
         padding-bottom: 10px;
         border-bottom: 3px solid #667eea;
         display: flex;
@@ -158,6 +206,16 @@
         gap: 10px;
       }
 
+      .result-badge {
+        background: #667eea;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      /* Tableaux */
       .results-table {
         width: 100%;
         border-collapse: collapse;
@@ -188,16 +246,49 @@
         border-bottom: none;
       }
 
+      /* Cartes pour agrégations */
+      .aggregate-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .aggregate-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 25px;
+        border-radius: 15px;
+        color: white;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .aggregate-card h3 {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-bottom: 10px;
+      }
+
+      .aggregate-card .value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .aggregate-card .label {
+        font-size: 0.85rem;
+        opacity: 0.8;
+      }
+
       /* Panneau latéral */
       .query-section,
       .response-section {
-        margin-bottom: 30px;
+        margin-bottom: 20px;
       }
 
       .section-title {
         color: #2c3e50;
-        font-size: 1.3rem;
-        margin-bottom: 15px;
+        font-size: 1.1rem;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -206,14 +297,14 @@
       .query-box {
         background: #1a1a1a;
         color: #00ff88;
-        padding: 20px;
+        padding: 15px;
         border-radius: 10px;
         font-family: "Courier New", monospace;
-        font-size: 14px;
-        line-height: 1.5;
+        font-size: 12px;
+        line-height: 1.4;
         overflow-x: auto;
         white-space: pre-wrap;
-        max-height: 300px;
+        max-height: 200px;
         overflow-y: auto;
       }
 
@@ -240,6 +331,7 @@
       /* Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
+        height: 8px;
       }
 
       ::-webkit-scrollbar-track {
@@ -255,90 +347,276 @@
       ::-webkit-scrollbar-thumb:hover {
         background: linear-gradient(45deg, #5a6fd8, #6a4190);
       }
+
+      /* Bouton effacer */
+      .clear-btn {
+        padding: 8px 16px;
+        background: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .clear-btn:hover {
+        background: #c0392b;
+        transform: translateY(-2px);
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <header>
-        <h1>🔍 Analyse des Produits Amazon avec LLM</h1>
-        <p>
-          Posez une question en français et obtenez les résultats en temps réel
+        <h1>🧠 NLP → MongoDB Query Engine</h1>
+        <p class="subtitle">
+          Traduisez vos questions en langage naturel en requêtes MongoDB
         </p>
       </header>
 
       <div class="app-container">
         <!-- Panneau principal -->
         <div class="main-panel">
+          <!-- Exemples de requêtes -->
+          <div class="examples">
+            <h3>💡 Exemples de requêtes :</h3>
+            <div class="example-queries">
+              <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Combien de produits avec rating > 4 ?
+              </span>
+              <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Prix moyen des câbles
+              </span>
+              <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Nombre de produits par catégorie
+              </span>
+              <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Top 10 produits les mieux notés
+              </span>
+              <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Produit le moins cher
+              </span>
+              <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Somme des prix des electronics
+              </span>
+            </div>
+          </div>
+
           <!-- Formulaire de recherche -->
           <form method="POST" class="search-form">
             <input
               type="text"
               name="question"
+              id="questionInput"
               class="search-input"
-              placeholder="Exemple: 'produits avec rating > 4' ou 'câbles iPhone'..."
+              placeholder="Posez votre question en langage naturel..."
               value="{{ question }}"
               required
             />
-            <button type="submit" class="search-btn">🔍 Rechercher</button>
+            <button type="submit" class="search-btn">🔍 Analyser</button>
           </form>
 
           <!-- Conversation -->
-          <div class="conversation">
-            {% for msg in conversation %} {% if msg.role == 'user' %}
-            <div class="message user-message">
-              <strong>👤 Vous:</strong> {{ msg.text }}
-            </div>
-            {% else %}
-            <div class="message bot-message">
-              <strong>🤖 Assistant:</strong> {{ msg.text }}
-            </div>
-            {% endif %} {% endfor %}
+          {% if conversation %}
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="color: #2c3e50;">💬 Historique</h3>
+            <a href="/clear" class="clear-btn">🗑️ Effacer</a>
           </div>
+          <div class="conversation">
+            {% for msg in conversation %}
+              {% if msg.role == 'user' %}
+              <div class="message user-message">
+                <strong>👤 Vous:</strong> {{ msg.text }}
+              </div>
+              {% else %}
+              <div class="message bot-message">
+                <strong>🤖 Assistant:</strong> {{ msg.text }}
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
 
-          <!-- Tableau des résultats - AFFICHAGE FORCÉ -->
+          <!-- Résultats -->
           <div class="results-section">
-            <h2 class="results-title">📊 Résultats de la Recherche</h2>
+            <div class="results-header">
+              <h2 class="results-title">
+                📊 Résultats
+                {% if result_type %}
+                <span class="result-badge">{{ result_type.upper() }}</span>
+                {% endif %}
+              </h2>
+            </div>
 
-            {% if results and results|length > 0 %}
-            <table class="results-table">
-              <thead>
-                <tr>
-                  <th>Produit</th>
-                  <th>Catégorie</th>
-                  <th>Note</th>
-                  <th>Prix</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for item in results %}
-                <tr>
-                  <td>{{ item.product_name }}</td>
-                  <td>{{ item.category }}</td>
-                  <td>{{ item.rating }}</td>
-                  <td>{{ item.discounted_price }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-            <p style="margin-top: 10px; color: #666; font-size: 0.9em">
-              Affichage de {{ results|length }} produit(s)
-            </p>
-            {% elif results and results|length == 0 %}
-            <div class="empty-state">
-              <div style="font-size: 48px; margin-bottom: 20px">🔍</div>
-              <h3 style="color: #e74c3c; margin-bottom: 10px">
-                Aucun produit trouvé
-              </h3>
-              <p>Essayez avec une autre requête ou moins de restrictions</p>
-            </div>
+            {% if result_type == 'select' and results %}
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>Produit</th>
+                    <th>Catégorie</th>
+                    <th>Note</th>
+                    <th>Prix</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in results %}
+                  <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.rating }}</td>
+                    <td>{{ item.discounted_price }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              <p style="margin-top: 10px; color: #666; font-size: 0.9em">
+                {{ metadata.count }} produit(s)
+              </p>
+
+            {% elif result_type == 'count' %}
+              {% if results|length == 1 %}
+              <div class="aggregate-cards">
+                <div class="aggregate-card">
+                  <h3>Nombre Total</h3>
+                  <div class="value">{{ results[0].count }}</div>
+                  <div class="label">produits trouvés</div>
+                </div>
+              </div>
+              {% else %}
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>Groupe</th>
+                    <th>Nombre</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in results %}
+                  <tr>
+                    <td>{{ item.group }}</td>
+                    <td><strong>{{ item.count }}</strong></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% endif %}
+
+            {% elif result_type == 'avg' %}
+              {% if results|length == 1 %}
+              <div class="aggregate-cards">
+                <div class="aggregate-card">
+                  <h3>Moyenne</h3>
+                  <div class="value">{{ results[0].average }}</div>
+                  <div class="label">{{ results[0].field }}</div>
+                </div>
+              </div>
+              {% else %}
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>Groupe</th>
+                    <th>Moyenne</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in results %}
+                  <tr>
+                    <td>{{ item.group }}</td>
+                    <td><strong>{{ item.average }}</strong></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% endif %}
+
+            {% elif result_type == 'sum' %}
+              {% if results|length == 1 %}
+              <div class="aggregate-cards">
+                <div class="aggregate-card">
+                  <h3>Somme Totale</h3>
+                  <div class="value">{{ results[0].sum }}</div>
+                  <div class="label">{{ results[0].field }}</div>
+                </div>
+              </div>
+              {% else %}
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>Groupe</th>
+                    <th>Somme</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in results %}
+                  <tr>
+                    <td>{{ item.group }}</td>
+                    <td><strong>{{ item.sum }}</strong></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% endif %}
+
+            {% elif result_type in ['max', 'min'] %}
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    {% if results[0].group is defined %}
+                    <th>Groupe</th>
+                    {% endif %}
+                    <th>Produit</th>
+                    <th>Valeur</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in results %}
+                  <tr>
+                    {% if item.group is defined %}
+                    <td>{{ item.group }}</td>
+                    {% endif %}
+                    <td>{{ item.product }}</td>
+                    <td><strong>{{ item.value }}</strong></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+
+            {% elif result_type == 'group' %}
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    {% for key in results[0].keys() %}
+                    <th>{{ key }}</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in results %}
+                  <tr>
+                    {% for value in item.values() %}
+                    <td>{{ value }}</td>
+                    {% endfor %}
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+
+            {% elif result_type == 'error' %}
+              <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 20px">❌</div>
+                <h3 style="color: #e74c3c; margin-bottom: 10px">Erreur</h3>
+                <p>{{ metadata.message }}</p>
+              </div>
+
             {% else %}
-            <div class="empty-state">
-              <div style="font-size: 48px; margin-bottom: 20px">📋</div>
-              <h3 style="color: #3498db; margin-bottom: 10px">
-                En attente de recherche
-              </h3>
-              <p>Posez une question ci-dessus pour voir les résultats ici</p>
-            </div>
+              <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 20px">💡</div>
+                <h3 style="color: #3498db; margin-bottom: 10px">
+                  Posez une question
+                </h3>
+                <p>Utilisez le langage naturel pour interroger la base de données</p>
+              </div>
             {% endif %}
           </div>
         </div>
@@ -347,23 +625,51 @@
         <div class="side-panel">
           <!-- Requête MongoDB -->
           <div class="query-section">
-            <h3 class="section-title">⚙️ Requête MongoDB Générée</h3>
+            <h3 class="section-title">🍃 MongoDB</h3>
             {% if sql_query %}
             <div class="query-box">{{ sql_query }}</div>
             {% else %}
-            <div class="query-box">{}</div>
+            <div class="query-box">// Aucune requête générée</div>
+            {% endif %}
+          </div>
+
+          <!-- Autres bases de données -->
+          <div class="query-section">
+            <h3 class="section-title">🔴 Redis</h3>
+            {% if redis_query %}
+            <div class="query-box" style="background: #2d1e1e; color: #ff6b6b;">{{ redis_query }}</div>
+            {% else %}
+            <div class="query-box" style="background: #2d1e1e; color: #ff6b6b;"># Aucune requête</div>
+            {% endif %}
+          </div>
+
+          <div class="query-section">
+            <h3 class="section-title">🗄️ HBase</h3>
+            {% if hbase_query %}
+            <div class="query-box" style="background: #1e2d1e; color: #88ff88;">{{ hbase_query }}</div>
+            {% else %}
+            <div class="query-box" style="background: #1e2d1e; color: #88ff88;"># Aucune requête</div>
+            {% endif %}
+          </div>
+
+          <div class="query-section">
+            <h3 class="section-title">🔵 Neo4j (Cypher)</h3>
+            {% if neo4j_query %}
+            <div class="query-box" style="background: #1e1e2d; color: #6bb6ff;">{{ neo4j_query }}</div>
+            {% else %}
+            <div class="query-box" style="background: #1e1e2d; color: #6bb6ff;">// Aucune requête</div>
             {% endif %}
           </div>
 
           <!-- Réponse LLM -->
           <div class="response-section">
-            <h3 class="section-title">💬 Réponse du Système</h3>
+            <h3 class="section-title">💬 Analyse</h3>
             {% if response %}
             <div class="response-box">{{ response }}</div>
             {% else %}
             <div class="response-box">
               <p style="color: #666; font-style: italic">
-                La réponse apparaîtra ici après votre recherche...
+                L'analyse apparaîtra ici...
               </p>
             </div>
             {% endif %}
@@ -371,5 +677,11 @@
         </div>
       </div>
     </div>
+
+    <script>
+      function fillQuery(text) {
+        document.getElementById('questionInput').value = text;
+      }
+    </script>
   </body>
 </html>
