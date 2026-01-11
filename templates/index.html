@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Analyse Amazon avec NLP → MongoDB</title>
+    <title>Analyse Amazon avec NLP → NoSQL</title>
     <style>
       * {
         box-sizing: border-box;
@@ -302,8 +302,6 @@
         font-family: "Courier New", monospace;
         font-size: 12px;
         line-height: 1.4;
-        overflow-x: auto;
-        white-space: pre-wrap;
         max-height: 200px;
         overflow-y: auto;
       }
@@ -364,14 +362,124 @@
         background: #c0392b;
         transform: translateY(-2px);
       }
+
+      /* 🆕 STYLES POUR L'ANALYSE DE REQUÊTES NOSQL */
+      .analysis-container {
+        padding: 30px;
+        border-radius: 15px;
+        color: #333;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .analysis-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid; /* nécessaire pour border-image */
+        border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-image-slice: 1;
+      }
+
+      .analysis-header h2 {
+        font-size: 1.8rem;
+        margin: 0;
+      }
+
+      .language-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: white;
+      }
+
+      .analysis-section {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(10px);
+      }
+
+      .analysis-section h3 {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .analysis-section p {
+        line-height: 1.8;
+        font-size: 1rem;
+      }
+
+      .breakdown-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .breakdown-step {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #ffb300;
+      }
+
+      .breakdown-step .step-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 1.05rem;
+      }
+
+      .breakdown-step .step-explanation {
+        opacity: 0.95;
+        line-height: 1.6;
+      }
+
+      .optimization-tips {
+        list-style: none;
+        padding: 0;
+      }
+
+      .optimization-tips li {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .optimization-tips li::before {
+        content: "💡";
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+
+      .human-readable-box {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 20px;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        font-style: italic;
+        border: 2px dashed rgba(255, 255, 255, 0.4);
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <header>
-        <h1>🧠 NLP → MongoDB Query Engine</h1>
+        <h1>🧠 NLP ↔ NoSQL Query Engine</h1>
         <p class="subtitle">
-          Traduisez vos questions en langage naturel en requêtes MongoDB
+          Traduction bidirectionnelle : Langage Naturel ↔ Requêtes NoSQL
         </p>
       </header>
 
@@ -397,8 +505,28 @@
               <span class="example-tag" onclick="fillQuery(this.textContent)">
                 Produit le moins cher
               </span>
-              <span class="example-tag" onclick="fillQuery(this.textContent)">
-                Somme des prix des electronics
+
+              <!-- 🆕 EXEMPLES POUR L'ANALYSE DE REQUÊTES -->
+              <span
+                class="example-tag"
+                onclick="fillQuery(this.textContent)"
+                style="border-color: #ff6b6b; color: #ff6b6b"
+              >
+                Explique: db.products.find({rating: {$gt: 4}})
+              </span>
+              <span
+                class="example-tag"
+                onclick="fillQuery(this.textContent)"
+                style="border-color: #ff6b6b; color: #ff6b6b"
+              >
+                Que fait: HGETALL user:12345
+              </span>
+              <span
+                class="example-tag"
+                onclick="fillQuery(this.textContent)"
+                style="border-color: #ff6b6b; color: #ff6b6b"
+              >
+                Analyse: MATCH (n:Product) RETURN n
               </span>
             </div>
           </div>
@@ -410,7 +538,7 @@
               name="question"
               id="questionInput"
               class="search-input"
-              placeholder="Posez votre question en langage naturel..."
+              placeholder="Posez votre question ou collez une requête NoSQL..."
               value="{{ question }}"
               required
             />
@@ -419,22 +547,27 @@
 
           <!-- Conversation -->
           {% if conversation %}
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="color: #2c3e50;">💬 Historique</h3>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 15px;
+            "
+          >
+            <h3 style="color: #2c3e50">💬 Historique</h3>
             <a href="/clear" class="clear-btn">🗑️ Effacer</a>
           </div>
           <div class="conversation">
-            {% for msg in conversation %}
-              {% if msg.role == 'user' %}
-              <div class="message user-message">
-                <strong>👤 Vous:</strong> {{ msg.text }}
-              </div>
-              {% else %}
-              <div class="message bot-message">
-                <strong>🤖 Assistant:</strong> {{ msg.text }}
-              </div>
-              {% endif %}
-            {% endfor %}
+            {% for msg in conversation %} {% if msg.role == 'user' %}
+            <div class="message user-message">
+              <strong>👤 Vous:</strong> {{ msg.text }}
+            </div>
+            {% else %}
+            <div class="message bot-message">
+              <strong>🤖 Assistant:</strong> {{ msg.text }}
+            </div>
+            {% endif %} {% endfor %}
           </div>
           {% endif %}
 
@@ -442,251 +575,557 @@
           <div class="results-section">
             <div class="results-header">
               <h2 class="results-title">
-                📊 Résultats
-                {% if result_type %}
+                📊 Résultats {% if result_type %}
                 <span class="result-badge">{{ result_type.upper() }}</span>
                 {% endif %}
               </h2>
             </div>
 
             {% if result_type == 'select' and results %}
-              <table class="results-table">
-                <thead>
-                  <tr>
-                    <th>Produit</th>
-                    <th>Catégorie</th>
-                    <th>Note</th>
-                    <th>Prix</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in results %}
-                  <tr>
-                    <td>{{ item.product_name }}</td>
-                    <td>{{ item.category }}</td>
-                    <td>{{ item.rating }}</td>
-                    <td>{{ item.discounted_price }}</td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-              <p style="margin-top: 10px; color: #666; font-size: 0.9em">
-                {{ metadata.count }} produit(s)
-              </p>
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Produit</th>
+                  <th>Catégorie</th>
+                  <th>Note</th>
+                  <th>Prix</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results %}
+                <tr>
+                  <td>{{ item.product_name }}</td>
+                  <td>{{ item.category }}</td>
+                  <td>{{ item.rating }}</td>
+                  <td>{{ item.discounted_price }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            <p style="margin-top: 10px; color: #666; font-size: 0.9em">
+              {{ metadata.count }} produit(s)
+            </p>
 
-            {% elif result_type == 'count' %}
-              {% if results|length == 1 %}
-              <div class="aggregate-cards">
-                <div class="aggregate-card">
-                  <h3>Nombre Total</h3>
-                  <div class="value">{{ results[0].count }}</div>
-                  <div class="label">produits trouvés</div>
-                </div>
+            {% elif result_type == 'count' %} {% if results|length == 1 %}
+            <div class="aggregate-cards">
+              <div class="aggregate-card">
+                <h3>Nombre Total</h3>
+                <div class="value">{{ results[0].count }}</div>
+                <div class="label">produits trouvés</div>
               </div>
-              {% else %}
-              <table class="results-table">
-                <thead>
-                  <tr>
-                    <th>Groupe</th>
-                    <th>Nombre</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in results %}
-                  <tr>
-                    <td>{{ item.group }}</td>
-                    <td><strong>{{ item.count }}</strong></td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-              {% endif %}
-
-            {% elif result_type == 'avg' %}
-              {% if results|length == 1 %}
-              <div class="aggregate-cards">
-                <div class="aggregate-card">
-                  <h3>Moyenne</h3>
-                  <div class="value">{{ results[0].average }}</div>
-                  <div class="label">{{ results[0].field }}</div>
-                </div>
+            </div>
+            {% else %}
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Groupe</th>
+                  <th>Nombre</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results %}
+                <tr>
+                  <td>{{ item.group }}</td>
+                  <td><strong>{{ item.count }}</strong></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% endif %} {% elif result_type == 'avg' %} {% if results|length ==
+            1 %}
+            <div class="aggregate-cards">
+              <div class="aggregate-card">
+                <h3>Moyenne</h3>
+                <div class="value">{{ results[0].average }}</div>
+                <div class="label">{{ results[0].field }}</div>
               </div>
-              {% else %}
-              <table class="results-table">
-                <thead>
-                  <tr>
-                    <th>Groupe</th>
-                    <th>Moyenne</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in results %}
-                  <tr>
-                    <td>{{ item.group }}</td>
-                    <td><strong>{{ item.average }}</strong></td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-              {% endif %}
-
-            {% elif result_type == 'sum' %}
-              {% if results|length == 1 %}
-              <div class="aggregate-cards">
-                <div class="aggregate-card">
-                  <h3>Somme Totale</h3>
-                  <div class="value">{{ results[0].sum }}</div>
-                  <div class="label">{{ results[0].field }}</div>
-                </div>
+            </div>
+            {% else %}
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Groupe</th>
+                  <th>Moyenne</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results %}
+                <tr>
+                  <td>{{ item.group }}</td>
+                  <td><strong>{{ item.average }}</strong></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% endif %} {% elif result_type == 'sum' %} {% if results|length ==
+            1 %}
+            <div class="aggregate-cards">
+              <div class="aggregate-card">
+                <h3>Somme Totale</h3>
+                <div class="value">{{ results[0].sum }}</div>
+                <div class="label">{{ results[0].field }}</div>
               </div>
-              {% else %}
-              <table class="results-table">
-                <thead>
-                  <tr>
-                    <th>Groupe</th>
-                    <th>Somme</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in results %}
-                  <tr>
-                    <td>{{ item.group }}</td>
-                    <td><strong>{{ item.sum }}</strong></td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-              {% endif %}
-
-            {% elif result_type in ['max', 'min'] %}
-              <table class="results-table">
-                <thead>
-                  <tr>
-                    {% if results[0].group is defined %}
-                    <th>Groupe</th>
-                    {% endif %}
-                    <th>Produit</th>
-                    <th>Valeur</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in results %}
-                  <tr>
-                    {% if item.group is defined %}
-                    <td>{{ item.group }}</td>
-                    {% endif %}
-                    <td>{{ item.product }}</td>
-                    <td><strong>{{ item.value }}</strong></td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+            </div>
+            {% else %}
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Groupe</th>
+                  <th>Somme</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results %}
+                <tr>
+                  <td>{{ item.group }}</td>
+                  <td><strong>{{ item.sum }}</strong></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% endif %} {% elif result_type in ['max', 'min'] %}
+            <table class="results-table">
+              <thead>
+                <tr>
+                  {% if results[0].group is defined %}
+                  <th>Groupe</th>
+                  {% endif %}
+                  <th>Produit</th>
+                  <th>Valeur</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results %}
+                <tr>
+                  {% if item.group is defined %}
+                  <td>{{ item.group }}</td>
+                  {% endif %}
+                  <td>{{ item.product }}</td>
+                  <td><strong>{{ item.value }}</strong></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
 
             {% elif result_type == 'group' %}
+            <table class="results-table">
+              <thead>
+                <tr>
+                  {% for key in results[0].keys() %}
+                  <th>{{ key }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results %}
+                <tr>
+                  {% for value in item.values() %}
+                  <td>{{ value }}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            {% elif result_type == 'general_info' %}
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Colonne</th>
+                  <th>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for col, dtype in metadata.dtypes.items() %}
+                <tr>
+                  <td><strong>{{ col }}</strong></td>
+                  <td>{{ dtype }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            <p style="margin-top: 10px; color: #666">
+              {{ metadata.count }} ligne(s)
+            </p>
+
+            {% elif result_type == 'convert_nosql' and analysis_explanation %}
+            <!-- 🆕 AFFICHAGE DE L'ANALYSE DE REQUÊTE -->
+            <div class="analysis-container">
+              <div class="analysis-header">
+                <h2>🔍 Analyse de Requête</h2>
+                <span class="language-badge"
+                  >{{ analysis_explanation.language }}</span
+                >
+              </div>
+
+              <!-- Objectif -->
+              <div class="analysis-section">
+                <h3>🎯 Objectif</h3>
+                <p>{{ analysis_explanation.objective }}</p>
+              </div>
+
+              <!-- Décomposition -->
+              <div class="analysis-section">
+                <h3>🔨 Décomposition Étape par Étape</h3>
+                <div class="breakdown-steps">
+                  {% for step in analysis_explanation.breakdown %}
+                  <div class="breakdown-step">
+                    <div class="step-title">
+                      {{ loop.index }}. {{ step.step }}
+                    </div>
+                    <div class="step-explanation">{{ step.explanation }}</div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <!-- Résultat attendu -->
+              <div class="analysis-section">
+                <h3>📊 Résultat Attendu</h3>
+                <p>{{ analysis_explanation.expected_result }}</p>
+              </div>
+
+              <!-- Traduction en langage naturel -->
+              <div class="analysis-section">
+                <h3>💡 En Langage Simple</h3>
+                <div class="human-readable-box">
+                  {{ analysis_explanation.human_readable }}
+                </div>
+              </div>
+
+              <!-- Conseils d'optimisation -->
+              {% if analysis_explanation.optimization_tips %}
+              <div class="analysis-section">
+                <h3>⚡ Conseils d'Optimisation</h3>
+                <ul class="optimization-tips">
+                  {% for tip in analysis_explanation.optimization_tips %}
+                  <li>{{ tip }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+            </div>
+            {% elif result_type == 'schema' %}
+            <div class="analysis-container">
+              <div class="analysis-header">
+                <h2>📋 Schéma de la Collection</h2>
+                <span class="language-badge">MongoDB</span>
+              </div>
+
+              {% if metadata.schema %}
               <table class="results-table">
                 <thead>
                   <tr>
-                    {% for key in results[0].keys() %}
-                    <th>{{ key }}</th>
-                    {% endfor %}
+                    <th>Colonne</th>
+                    <th>Type</th>
+                    <th>Non-null</th>
+                    <th>Null</th>
+                    <th>Complétude</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% for item in results %}
+                  {% for col, info in metadata.schema.items() %}
                   <tr>
-                    {% for value in item.values() %}
-                    <td>{{ value }}</td>
-                    {% endfor %}
+                    <td><strong>{{ col }}</strong></td>
+                    <td>{{ info.type }}</td>
+                    <td>{{ info.non_null }}</td>
+                    <td>{{ info.null }}</td>
+                    <td>
+                      <div
+                        style="
+                          background: #eee;
+                          border-radius: 4px;
+                          height: 8px;
+                          width: 100%;
+                        "
+                      >
+                        {% set total = info.non_null + info.null %} {% if total
+                        > 0 %}
+                        <div
+                          style="background: #667eea; height: 100%; width: {{ (info.non_null / total * 100) }}%; border-radius: 4px;"
+                        ></div>
+                        {% endif %}
+                      </div>
+                      {% if info.non_null + info.null > 0 %} {{
+                      "%.1f"|format(info.non_null / (info.non_null + info.null)
+                      * 100) }}% {% else %} 0% {% endif %}
+                    </td>
                   </tr>
                   {% endfor %}
                 </tbody>
               </table>
 
-            {% elif result_type == 'general_info' %}
+              <div
+                style="
+                  margin-top: 20px;
+                  padding: 15px;
+                  background: #f8f9fa;
+                  border-radius: 10px;
+                "
+              >
+                <h3 style="margin-bottom: 10px">📊 Résumé</h3>
+                <p>
+                  Total: {{ metadata.count }} enregistrements, {{
+                  metadata.schema|length }} colonnes
+                </p>
+              </div>
+              {% else %}
+              <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 20px">📋</div>
+                <h3 style="color: #3498db; margin-bottom: 10px">
+                  Schéma non disponible
+                </h3>
+                <p>Les informations de schéma n'ont pas pu être récupérées.</p>
+              </div>
+              {% endif %}
+            </div>
+            {% elif result_type == 'schema' %}
+            <div class="analysis-container">
+              <div class="analysis-header">
+                <h2>📋 Schéma de la Collection</h2>
+                <span class="language-badge"
+                  >{{ metadata.num_columns }} colonnes</span
+                >
+              </div>
+
               <table class="results-table">
                 <thead>
                   <tr>
-                    <th>Propriété</th>
-                    <th>Valeur</th>
+                    <th>Colonne</th>
+                    <th>Type</th>
+                    <th>Non-null</th>
+                    <th>Null</th>
+                    <th>Complétude</th>
                   </tr>
                 </thead>
                 <tbody>
+                  {% for item in results %}
                   <tr>
-                    <td>Nombre de lignes</td>
-                    <td><strong>{{ metadata.count }}</strong></td>
+                    <td><strong>{{ item.column }}</strong></td>
+                    <td>{{ item.type }}</td>
+                    <td>{{ item.non_null }}</td>
+                    <td>{{ item.null }}</td>
+                    <td>{{ item.completeness }}</td>
                   </tr>
-                  <tr>
-                    <td>Colonnes</td>
-                    <td>
-                      {% for col in metadata.columns %}
-                        <span style="display: inline-block; background: #f0f0f0; 
-                                    padding: 3px 8px; margin: 3px; border-radius: 5px;">
-                          {{ col }}
-                        </span>
-                      {% endfor %}
-                    </td>
-                  </tr>
+                  {% endfor %}
                 </tbody>
               </table>
 
-            {% elif result_type == 'error' %}
-              <div class="empty-state">
-                <div style="font-size: 48px; margin-bottom: 20px">❌</div>
-                <h3 style="color: #e74c3c; margin-bottom: 10px">Erreur</h3>
-                <p>{{ metadata.message }}</p>
+              <div
+                style="
+                  margin-top: 20px;
+                  padding: 15px;
+                  background: #f8f9fa;
+                  border-radius: 10px;
+                "
+              >
+                <h3 style="margin-bottom: 10px">📊 Résumé</h3>
+                <p>
+                  Total: {{ metadata.count }} enregistrements, {{
+                  metadata.num_columns }} colonnes
+                </p>
+              </div>
+            </div>
+
+            {% elif result_type == 'data_profile' %}
+            <div class="analysis-container">
+              <div class="analysis-header">
+                <h2>📊 Profil des Données</h2>
+                <span class="language-badge"
+                  >{{ metadata.num_rows }} enregistrements</span
+                >
               </div>
 
-            {% else %}
-              <div class="empty-state">
-                <div style="font-size: 48px; margin-bottom: 20px">💡</div>
-                <h3 style="color: #3498db; margin-bottom: 10px">
-                  Posez une question
-                </h3>
-                <p>Utilisez le langage naturel pour interroger la base de données</p>
+              {% if metadata.profile %}
+              <div
+                style="
+                  margin-bottom: 20px;
+                  padding: 15px;
+                  background: #f8f9fa;
+                  border-radius: 10px;
+                "
+              >
+                <h3 style="margin-bottom: 10px">📈 Statistiques Globales</h3>
+                <p>
+                  Lignes: {{ metadata.profile.num_rows }}, Colonnes: {{
+                  metadata.profile.num_columns }}
+                </p>
               </div>
+
+              <div class="breakdown-steps">
+                {% for col, info in metadata.profile.columns.items() %}
+                <div class="breakdown-step">
+                  <div class="step-title">{{ col }}</div>
+                  <div class="step-explanation">
+                    <p><strong>Type:</strong> {{ info.type }}</p>
+                    <p>
+                      <strong>Valeurs manquantes:</strong> {{ info.missing }}
+                    </p>
+                    {% if info.min is defined %}
+                    <p>
+                      <strong>Min:</strong> {{ info.min }},
+                      <strong>Max:</strong> {{ info.max }}
+                    </p>
+                    <p>
+                      <strong>Moyenne:</strong> {{ info.mean|round(2) }},
+                      <strong>Écart-type:</strong> {{ info.std|round(2) }}
+                    </p>
+                    {% endif %}
+                    <p>
+                      <strong>Valeurs uniques:</strong> {{ info.unique_values }}
+                    </p>
+                    {% if info.top_values is defined and info.top_values %}
+                    <p>
+                      <strong>Valeurs fréquentes:</strong>
+                      {% for val, count in info.top_values.items() %}
+                      <br />{{ val }}: {{ count }} {% endfor %}
+                    </p>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 20px">📊</div>
+                <h3 style="color: #3498db; margin-bottom: 10px">
+                  Profil non disponible
+                </h3>
+                <p>Les informations de profil n'ont pas pu être récupérées.</p>
+              </div>
+              {% endif %}
+            </div>
+
+            {% elif result_type == 'columns' %}
+            <div class="analysis-container">
+              <div class="analysis-header">
+                <h2>📝 Colonnes Disponibles</h2>
+                <span class="language-badge"
+                  >{{ metadata.count }} colonnes</span
+                >
+              </div>
+
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                  gap: 10px;
+                "
+              >
+                {% for col in metadata.columns %}
+                <div
+                  style="
+                    background: #f8f9fa;
+                    padding: 10px;
+                    border-radius: 8px;
+                    border-left: 4px solid #667eea;
+                  "
+                >
+                  {{ col }}
+                </div>
+                {% endfor %}
+              </div>
+
+              <div
+                style="
+                  margin-top: 20px;
+                  padding: 15px;
+                  background: #f8f9fa;
+                  border-radius: 10px;
+                "
+              >
+                <h3 style="margin-bottom: 10px">📊 Résumé</h3>
+                <p>
+                  Total: {{ metadata.count }} colonnes dans la base de données
+                </p>
+              </div>
+            </div>
+
+            {% elif result_type == 'error' %}
+            <div class="empty-state">
+              <div style="font-size: 48px; margin-bottom: 20px">❌</div>
+              <h3 style="color: #e74c3c; margin-bottom: 10px">Erreur</h3>
+              <p>{{ metadata.message }}</p>
+            </div>
+
+            {% else %}
+            <div class="empty-state">
+              <div style="font-size: 48px; margin-bottom: 20px">💡</div>
+              <h3 style="color: #3498db; margin-bottom: 10px">
+                Posez une question ou analysez une requête
+              </h3>
+              <p>
+                Utilisez le langage naturel pour interroger la base de
+                données<br />
+                ou collez une requête NoSQL pour l'analyser
+              </p>
+            </div>
             {% endif %}
           </div>
         </div>
 
         <!-- Panneau latéral -->
         <div class="side-panel">
-          <!-- Requête MongoDB -->
+          <!-- Requête MongoDB / Analysée -->
           <div class="query-section">
-            <h3 class="section-title">🍃 MongoDB</h3>
+            <h3 class="section-title">
+              {% if result_type == 'convert_nosql' %} 🔍 Requête Analysée {%
+              else %} 🍃 MongoDB {% endif %}
+            </h3>
             {% if sql_query %}
-            <div class="query-box">{{ sql_query }}</div>
+            <div class="query-box" style="white-space: pre-wrap">
+              {{ sql_query }}
+            </div>
             {% else %}
             <div class="query-box">// Aucune requête générée</div>
             {% endif %}
           </div>
 
+          <!-- 🆕 MASQUER LES AUTRES BASES EN MODE ANALYSE -->
+          {% if result_type != 'convert_nosql' %}
           <!-- Autres bases de données -->
           <div class="query-section">
             <h3 class="section-title">🔴 Redis</h3>
             {% if redis_query %}
-            <div class="query-box" style="background: #2d1e1e; color: #ff6b6b;">{{ redis_query }}</div>
+            <div
+              class="query-box"
+              style="background: #2d1e1e; color: #ff6b6b; white-space: wrap"
+            >
+              {{ redis_query }}
+            </div>
             {% else %}
-            <div class="query-box" style="background: #2d1e1e; color: #ff6b6b;"># Aucune requête</div>
+            <div class="query-box" style="background: #2d1e1e; color: #ff6b6b">
+              # Aucune requête
+            </div>
             {% endif %}
           </div>
 
           <div class="query-section">
             <h3 class="section-title">🗄️ HBase</h3>
             {% if hbase_query %}
-            <div class="query-box" style="background: #1e2d1e; color: #88ff88;">{{ hbase_query }}</div>
+            <div class="query-box" style="background: #1e2d1e; color: #88ff88">
+              {{ hbase_query }}
+            </div>
             {% else %}
-            <div class="query-box" style="background: #1e2d1e; color: #88ff88;"># Aucune requête</div>
+            <div class="query-box" style="background: #1e2d1e; color: #88ff88">
+              # Aucune requête
+            </div>
             {% endif %}
           </div>
 
           <div class="query-section">
             <h3 class="section-title">🔵 Neo4j (Cypher)</h3>
             {% if neo4j_query %}
-            <div class="query-box" style="background: #1e1e2d; color: #6bb6ff;">{{ neo4j_query }}</div>
+            <div class="query-box" style="background: #1e1e2d; color: #6bb6ff">
+              {{ neo4j_query }}
+            </div>
             {% else %}
-            <div class="query-box" style="background: #1e1e2d; color: #6bb6ff;">// Aucune requête</div>
+            <div class="query-box" style="background: #1e1e2d; color: #6bb6ff">
+              // Aucune requête
+            </div>
             {% endif %}
           </div>
+          {% endif %}
 
           <!-- Réponse LLM -->
           <div class="response-section">
@@ -707,7 +1146,7 @@
 
     <script>
       function fillQuery(text) {
-        document.getElementById('questionInput').value = text;
+        document.getElementById("questionInput").value = text;
       }
     </script>
   </body>

@@ -1,11 +1,13 @@
 import json
-import pandas as pd
-from groq import Groq
-import os
 import re
+import pandas as pd
+import torch
 from typing import Dict, List, Any, Tuple
 from connectors.mongodb_connector import *
-from dotenv import load_dotenv  # Ajoutez cette importation
+from dotenv import load_dotenv
+from collections import Counter
+from pandas.api.types import is_numeric_dtype
+from .classifier import detect_query_type, analyze_query
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -15,83 +17,39 @@ df = None
 client = None
 groq_available = False
 
-
 # Créer une instance de DataLoader
 loader = DataLoader(path="data/mongo_amazon.json")
-
-# init_data() devient une méthode de DataLoader
 df = loader.init_data()
 
 print(df.head())
 print(df.dtypes)
 
 
-def init_groq_client():
-    """Initialise le client Groq"""
-    global client, groq_available
-    
-    try:
-        # Utiliser os.getenv() pour récupérer la clé API
-        api_key = os.getenv("GROQ_API_KEY")
-        
-        if not api_key or api_key == "votre_clé_api_groq_ici":
-            print("⚠️ GROQ_API_KEY non configurée ou invalide")
-            print("💡 Conseil: Ajoutez GROQ_API_KEY=votre_clé_réelle dans le fichier .env")
-            client = None
-            groq_available = False
-            return client, groq_available
-            
-        client = Groq(api_key=api_key)
-        print("✅ Client Groq initialisé")
-        groq_available = True
-    except Exception as e:
-        print(f"❌ Erreur client Groq : {e}")
-        client = None
-        groq_available = False
-    
-    return client, groq_available
 
-# Le reste du code reste inchangé...
-
-def detect_query_type(question: str) -> str:
-    """Détecte le type de requête demandée"""
-    question_lower = question.lower()
-    
-    # Requêtes générales sur la base
-    if any(word in question_lower for word in ['colonnes', 'types', 'noms des colonnes', 'nombre de lignes', 'plage', 'range', 'résumé']):
-        return 'general_info'
-    
-    # Vérifier d'abord les groupements explicites
-    if any(word in question_lower for word in ['grouper', 'group by', 'par catégorie', 'par type', 'par prix', 'by price']):
-        return 'group'
-
-    # Agrégations - plus strictes pour détecter avant les autres
-    if any(word in question_lower for word in ['moyenne', 'moyen', 'average', 'avg']):
-        return 'avg'
-    
-    if any(word in question_lower for word in ['combien', 'nombre', 'count', 'total de produits', 'compter']):
-        return 'count'
-    
-    if any(word in question_lower for word in ['somme', 'sum', 'total des', 'addition']):
-        return 'sum'
-    
-    if any(word in question_lower for word in ['maximum', 'max', 'plus élevé', 'meilleur', 'le plus cher', 'plus cher']):
-        return 'max'
-    
-    if any(word in question_lower for word in ['minimum', 'min', 'plus bas', 'moins cher', 'le moins cher', 'meilleur prix']):
-        return 'min'
-    
-    # Requête de sélection standard
-    return 'select'
 
 def generate_mongodb_query(question: str) -> Dict[str, Any]:
     """
-    Génère une requête MongoDB structurée avec le type d'opération,
-    et gère aussi les requêtes 'general_info' sur le DataFrame.
+    Génère une requête MongoDB structurée à partir d'une question en langage naturel
+    OU analyse une requête NoSQL existante
     """
     question_lower = question.lower().strip()
     query_type = detect_query_type(question)
-    
+
+    # 🆕 GESTION DU TYPE convert_nosql
+    if query_type == "convert_nosql":
+        print("🔄 Détection d'une requête NoSQL à analyser...")
+        
+        # Appeler analyze_query pour obtenir l'analyse complète
+        analysis = analyze_query(question)
+        
+        # 🔧 CORRECTION IMPORTANTE : Retourner l'analyse complète
+        return {
+            'type': 'convert_nosql',
+            'analysis': analysis,  # ✅ Inclure l'analyse complète
+            'original_query': question
+        }
+
+    # Traitement normal pour les autres types
     result = {
         'type': query_type,
         'filter': {},
@@ -101,86 +59,116 @@ def generate_mongodb_query(question: str) -> Dict[str, Any]:
         'limit': None
     }
 
-    # --- Nouveau : traitement des requêtes générales ---
-    if query_type == 'general_info':
-        from pandas.api.types import is_numeric_dtype
-        info = {}
-
-        # Colonnes
-        if 'colonnes' in question_lower or 'noms des colonnes' in question_lower:
-            info['columns'] = list(df.columns)
-
-        # Types
-        if 'types' in question_lower or 'type des colonnes' in question_lower:
-            info['dtypes'] = df.dtypes.apply(lambda x: str(x)).to_dict()
-
-        # Nombre de lignes
-        if 'nombre de lignes' in question_lower or 'combien de lignes' in question_lower:
-            info['num_rows'] = len(df)
-
-        # Plage/statistiques des champs numériques
-        numeric_cols = [c for c in df.columns if is_numeric_dtype(df[c])]
-        for col in numeric_cols:
-            if col in question_lower or 'plage' in question_lower or 'range' in question_lower:
-                info[col] = {
-                    'min': df[col].min(),
-                    'max': df[col].max(),
-                    'mean': df[col].mean(),
-                    'std': df[col].std()
-                }
-
-        result['info'] = info
+    # SCHÉMA
+    if query_type == "schema":
+        schema = {}
+        for col in df.columns:
+            schema[col] = {
+                "type": str(df[col].dtype),
+                "non_null": int(df[col].notna().sum()),
+                "null": int(df[col].isna().sum())
+            }
+        result["schema"] = schema
         return result
 
-    # --- Cas simples avec règles existantes ---
-    if "tous les produits" in question_lower or (query_type == 'select' and len(question_lower.split()) <= 3):
+    # =========================
+    # 1️⃣ SCHÉMA (types des champs)
+    # =========================
+    if query_type == "schema":
+        schema = {}
+        for col in df.columns:
+            schema[col] = {
+                "type": str(df[col].dtype),
+                "non_null": int(df[col].notna().sum()),
+                "null": int(df[col].isna().sum())
+            }
+
+        result["schema"] = schema
+        return result
+
+    # =========================
+    # 2️⃣ COLONNES UNIQUEMENT
+    # =========================
+    if query_type == "columns":
+        result["columns"] = list(df.columns)
+        return result
+
+    # =========================
+    # 3️⃣ PROFIL DES DONNÉES
+    # =========================
+    if query_type == "data_profile":
+        
+
+        profile = {
+            "num_rows": len(df),
+            "num_columns": len(df.columns),
+            "columns": {}
+        }
+
+        for col in df.columns:
+            col_info = {
+                "type": str(df[col].dtype),
+                "missing": int(df[col].isna().sum())
+            }
+
+            if is_numeric_dtype(df[col]):
+                col_info.update({
+                    "min": float(df[col].min()),
+                    "max": float(df[col].max()),
+                    "mean": float(df[col].mean()),
+                    "std": float(df[col].std())
+                })
+            else:
+                # Catégoriel / texte
+                col_info.update({
+                    "unique_values": int(df[col].nunique()),
+                    "top_values": df[col].value_counts().head(5).to_dict()
+                })
+
+            profile["columns"][col] = col_info
+
+        result["profile"] = profile
+        return result
+
+    # =========================
+    # 4️⃣ CAS SIMPLES
+    # =========================
+    if "tous les produits" in question_lower or (
+        query_type == 'select' and len(question_lower.split()) <= 3
+    ):
         print(f"🔍 Règle: Tous les produits (type: {query_type})")
         return result
-    
-    # Rating patterns
+
+    # =========================
+    # 5️⃣ FILTRES (rating, prix)
+    # =========================
     rating_match = re.search(r'rating\s*[>:≥]\s*(\d+(?:\.\d+)?)', question_lower)
     if rating_match:
         rating_value = float(rating_match.group(1))
         result['filter'] = {"rating": {"$gt": rating_value}}
-        print(f"🔍 Règle: Rating > {rating_value} (type: {query_type})")
         return result
-    
-    rating_match_lt = re.search(r'rating\s*[<≤]\s*(\d+(?:\.\d+)?)', question_lower)
-    if rating_match_lt:
-        rating_value = float(rating_match_lt.group(1))
-        result['filter'] = {"rating": {"$lt": rating_value}}
-        print(f"🔍 Règle: Rating < {rating_value} (type: {query_type})")
-        return result
-    
-    # Prix patterns
+
     price_match = re.search(r'(?:prix|price)\s*[<]\s*(\d+)', question_lower)
     if price_match:
         price_value = float(price_match.group(1))
         result['filter'] = {"discounted_price": {"$lt": price_value}}
-        print(f"🔍 Règle: Prix < {price_value} (type: {query_type})")
         return result
-    
-    # Catégories
-    if "electronics" in question_lower or "électronique" in question_lower:
-        result['filter'] = {"category": {"$regex": "electronics", "$options": "i"}}
-        if query_type in ['avg', 'sum', 'max', 'min']:
-            result['aggregation'] = {'field': 'discounted_price', 'operation': query_type}
-        print(f"🔍 Règle: Catégorie Electronics (type: {query_type})")
-        return result
-    
+
+    # =========================
+    # 6️⃣ CATÉGORIES
+    # =========================
     if "câble" in question_lower or "cable" in question_lower:
         result['filter'] = {"category": {"$regex": "cable", "$options": "i"}}
         if query_type in ['avg', 'sum', 'max', 'min']:
-            if 'prix' in question_lower or 'price' in question_lower:
-                result['aggregation'] = {'field': 'discounted_price', 'operation': query_type}
-            elif 'rating' in question_lower or 'note' in question_lower:
-                result['aggregation'] = {'field': 'rating', 'operation': query_type}
-            else:
-                result['aggregation'] = {'field': 'discounted_price', 'operation': query_type}
-        print(f"🔍 Règle: Catégorie Cable (type: {query_type})")
+            result['aggregation'] = {
+                'field': 'discounted_price',
+                'operation': query_type
+            }
         return result
-    
-    # Utiliser le LLM pour les cas complexes
+
+    # =========================
+    # 7️⃣ LLM (fallback)
+    # =========================
     if not groq_available:
         return result
     
@@ -291,6 +279,50 @@ def apply_filter(dataframe: pd.DataFrame, query: dict) -> pd.DataFrame:
             mask = mask & (dataframe[key] == value)
     
     return dataframe[mask]
+# file: schema_profiler.py
+
+
+
+def explore_schema_mongodb(df, query_type="schema"):
+    if query_type == "columns":
+        return "columns", list(df.columns), {"num_columns": len(df.columns)}
+
+    profile = {}
+    for col in df.columns:
+        col_series = df[col]
+        col_info = {"type": str(col_series.dtype), "missing": int(col_series.isna().sum())}
+
+        if is_numeric_dtype(col_series):
+            col_info.update({
+                "min": float(col_series.min()) if not col_series.empty else None,
+                "max": float(col_series.max()) if not col_series.empty else None,
+                "mean": float(col_series.mean()) if not col_series.empty else None,
+                "std": float(col_series.std()) if not col_series.empty else None,
+                "unique_values": int(col_series.nunique(dropna=True))
+            })
+        else:
+            # Gestion des listes ou objets non hashables
+            try:
+                col_info.update({
+                    "unique_values": int(col_series.dropna().apply(lambda x: tuple(x) if isinstance(x, list) else x).nunique()),
+                    "top_values": col_series.value_counts().head(5).to_dict()
+                })
+            except TypeError:
+                col_info.update({
+                    "unique_values": "N/A",
+                    "top_values": "N/A"
+                })
+
+        profile[col] = col_info
+
+    if query_type == "data_profile":
+        return "data_profile", profile, {"num_rows": len(df), "num_columns": len(df.columns)}
+    else:  # schema
+        return "schema", profile, {"num_rows": len(df), "num_columns": len(df.columns)}
+
+
+
+
 
 def execute_mongodb_query(query_dict: Dict[str, Any]) -> Tuple[str, List[Dict], Dict]:
     """
@@ -429,9 +461,109 @@ def execute_mongodb_query(query_dict: Dict[str, Any]) -> Tuple[str, List[Dict], 
             data = result.to_dict('records')
             metadata = {'group_by': group_by, 'groups': len(result)}
             return 'group', data, metadata
+    
+               # elif query_dict.get("type") in ["schema", "data_profile", "columns"]:
+        # # explore_schema_mongodb doit retourner les 3 valeurs : type, results, metadata
+        #     result_type, results, metadata = explore_schema_mongodb(df, query_type=query_dict.get("type"))
+        #     return result_type, results, metadata
         
-        elif query_dict.get('type') == 'general_info':
-            return 'general_info', query_dict.get('info', {}), {'count': len(df), 'columns': list(df.columns)}
+        elif query_type == "schema":
+            print("🔍 Traitement du schéma")
+            schema_data = query_dict.get('schema', {})
+            if schema_data:
+                # Convertir le schéma en format d'affichage
+                results_list = []
+                for col, info in schema_data.items():
+                    results_list.append({
+                        'column': col,
+                        'type': info.get('type', 'N/A'),
+                        'non_null': info.get('non_null', 0),
+                        'null': info.get('null', 0),
+                        'completeness': f"{(info.get('non_null', 0) / len(df) * 100):.1f}%" if len(df) > 0 else "0%"
+                    })
+                return 'schema', results_list, {
+                    'count': len(df), 
+                    'schema': schema_data,
+                    'columns': list(schema_data.keys()),
+                    'num_columns': len(schema_data)
+                }
+            else:
+                # Fallback si pas de schéma dans query_dict
+                schema = {}
+                for col in df.columns:
+                    schema[col] = {
+                        "type": str(df[col].dtype),
+                        "non_null": int(df[col].notna().sum()),
+                        "null": int(df[col].isna().sum())
+                    }
+                results_list = []
+                for col, info in schema.items():
+                    results_list.append({
+                        'column': col,
+                        'type': info.get('type', 'N/A'),
+                        'non_null': info.get('non_null', 0),
+                        'null': info.get('null', 0),
+                        'completeness': f"{(info.get('non_null', 0) / len(df) * 100):.1f}%" if len(df) > 0 else "0%"
+                    })
+                return 'schema', results_list, {
+                    'count': len(df), 
+                    'schema': schema,
+                    'columns': list(schema.keys()),
+                    'num_columns': len(schema)
+                }
+        
+        elif query_type == "data_profile":
+            print("📊 Traitement du profil des données")
+            profile_data = query_dict.get('profile', {})
+            if profile_data:
+                return 'data_profile', [], {
+                    'count': len(df),
+                    'profile': profile_data,
+                    'num_rows': profile_data.get('num_rows', len(df)),
+                    'num_columns': profile_data.get('num_columns', len(df.columns))
+                }
+            else:
+                # Générer un profil si pas présent dans query_dict
+                profile = {
+                    "num_rows": len(df),
+                    "num_columns": len(df.columns),
+                    "columns": {}
+                }
+                for col in df.columns:
+                    col_info = {
+                        "type": str(df[col].dtype),
+                        "missing": int(df[col].isna().sum())
+                    }
+                    if is_numeric_dtype(df[col]):
+                        col_info.update({
+                            "min": float(df[col].min()) if not df[col].empty else None,
+                            "max": float(df[col].max()) if not df[col].empty else None,
+                            "mean": float(df[col].mean()) if not df[col].empty else None,
+                            "std": float(df[col].std()) if not df[col].empty else None,
+                            "unique_values": int(df[col].nunique())
+                        })
+                    else:
+                        col_info.update({
+                            "unique_values": int(df[col].nunique()),
+                            "top_values": df[col].value_counts().head(5).to_dict()
+                        })
+                    profile["columns"][col] = col_info
+                
+                return 'data_profile', [], {
+                    'count': len(df),
+                    'profile': profile,
+                    'num_rows': profile.get('num_rows', len(df)),
+                    'num_columns': profile.get('num_columns', len(df.columns))
+                }
+        
+        elif query_type == "columns":
+            print("📝 Traitement des colonnes")
+            columns = query_dict.get('columns', list(df.columns))
+            return 'columns', [], {
+                'columns': columns,
+                'count': len(columns)
+            }
+
         
         else:  # select
             # Trier si spécifié
@@ -468,3 +600,18 @@ def execute_mongodb_query(query_dict: Dict[str, Any]) -> Tuple[str, List[Dict], 
         import traceback
         traceback.print_exc()
         return 'error', [], {'message': str(e)}
+    
+    
+    
+    
+if __name__ == "__main__":
+    
+    tests = [
+        "HGETALL user:12345",
+        "Que fait: HGETALL user:12345",
+        "Explique SMEMBERS category:cable",
+        "Explique db.products.find({})"
+    ]
+
+    for t in tests:
+        print(f"{t} → {detect_query_type(t)}")

@@ -1,6 +1,7 @@
 import pandas as pd
 import redis
 import json
+import re
 
 # =========================
 # 1. Connexion à Redis
@@ -45,14 +46,13 @@ reviews_df = df[reviews_cols]
 # r.flushdb()
 
 # =========================
-# 6. Insertion dans Redis
+# 6. Insertion dans Redis avec indexation
 # =========================
 for _, prod in products_df.iterrows():
     product_id = prod["product_id"]
 
     # -------- Produit : HASH --------
     product_key = f"product:{product_id}"
-
     r.hset(product_key, mapping={
         "product_id": product_id,
         "product_name": prod["product_name"],
@@ -67,9 +67,26 @@ for _, prod in products_df.iterrows():
         "product_link": prod["product_link"]
     })
 
-    # -------- Reviews : LIST --------
-    reviews_key = f"product:{product_id}:reviews"
+    # -------- Set global de tous les produits --------
+    r.sadd("products:all", product_id)
 
+    # -------- Index mots-clés pour recherche rapide --------
+    keywords = re.findall(r'\w+', str(prod["product_name"]).lower())
+    for kw in keywords:
+        r.sadd(f"products:keyword:{kw}", product_id)
+
+    # -------- Index catégorie --------
+    r.sadd(f"category:{prod['category']}", product_id)
+
+    # -------- Index rating : Sorted Set --------
+    try:
+        rating_val = float(prod["rating"])
+    except:
+        rating_val = 0.0
+    r.zadd("products:by_rating", {product_id: rating_val})
+
+    # -------- Reviews : LIST JSON --------
+    reviews_key = f"product:{product_id}:reviews"
     product_reviews = reviews_df[reviews_df["product_id"] == product_id]
 
     for _, rev in product_reviews.iterrows():
@@ -80,8 +97,14 @@ for _, prod in products_df.iterrows():
             "review_title": rev["review_title"],
             "review_content": rev["review_content"]
         }
-
-        # Chaque review est stockée comme JSON dans une LIST
         r.rpush(reviews_key, json.dumps(review_doc))
 
 print("✅ Conversion CSV → Redis terminée avec succès !")
+
+# =========================
+# 7. Vérification rapide
+# =========================
+total_products = r.scard("products:all")
+unique_categories = len(r.keys("category:*"))
+print(f"📊 Total produits: {total_products}")
+print(f"📊 Nombre de catégories uniques: {unique_categories}")
