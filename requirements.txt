@@ -1,0 +1,42 @@
+# Web interface
+# streamlit>=1.28.0
+
+# Core scientific packages
+numpy==2.4.0
+scipy==1.16.3
+scikit-learn==1.8.0
+
+# Deep Learning
+torch
+torchvision
+torchaudio
+transformers
+
+# LangChain ecosystem
+langchain
+langchain-community
+langchain-huggingface
+langchain-google-genai
+langchain-openai
+langchain-anthropic
+langchain-chroma
+langgraph
+
+# Vector stores and embeddings
+sentence-transformers
+faiss-cpu
+chromadb
+
+# Data processing
+pandas
+openpyxl
+
+# PDF processing
+PyPDF2
+pypdf
+
+# Web application
+streamlit
+
+# Additional utilities
+python-dotenv
