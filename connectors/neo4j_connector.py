@@ -1,13 +1,15 @@
+import yaml
 from neo4j import GraphDatabase
 
+# Charger la config YAML
+with open("neo4j.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
 # Connexion Neo4j
-uri = "bolt://localhost:7687"
-user = "neo4j"
-password = "password"  # ⚠️ change si besoin
-
-driver = GraphDatabase.driver(uri, auth=(user, password))
-
-print("✅ Connexion Neo4j établie")
+driver = GraphDatabase.driver(
+    config["uri"],
+    auth=(config["user"], config["password"])
+)
 
 def show_products(tx):
     query = """
@@ -19,15 +21,10 @@ def show_products(tx):
            count(r) AS reviews
     LIMIT 10
     """
-    result = tx.run(query)
-    for record in result:
-        print("\n--- Produit ---")
-        print(f"ID: {record['id']}")
-        print(f"Nom: {record['name']}")
-        print(f"Catégorie: {record['category']}")
-        print(f"Nb reviews: {record['reviews']}")
+    for record in tx.run(query):
+        print(record)
 
 with driver.session() as session:
-    session.read_transaction(show_products)
+    session.execute_read(show_products)
 
 driver.close()

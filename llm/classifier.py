@@ -6,6 +6,59 @@ import re
 import json
 
 
+CURRENT_CRUD_CONTEXT = {
+    "operation": None,
+    "params": None
+}
+
+def handle_crud_continuation(question: str) -> Dict[str, Any] | None:
+    """
+    Gère la continuité d'une opération CRUD incomplète
+    """
+    global CURRENT_CRUD_CONTEXT
+
+    if not CURRENT_CRUD_CONTEXT["operation"]:
+        return None
+
+    operation = CURRENT_CRUD_CONTEXT["operation"]
+    params = CURRENT_CRUD_CONTEXT["params"]
+    
+    # Extraire les nouveaux champs depuis la réponse utilisateur
+    new_params = extract_crud_params(question, operation)
+
+    # Fusion intelligente
+    params["data"].update(new_params.get("data", {}))
+    params["filter"].update(new_params.get("filter", {}))
+    params["fields_to_update"].update(new_params.get("fields_to_update", {}))
+
+    missing = detect_missing_crud_fields(operation, params)
+
+    if missing:
+        return {
+            "type": "crud_incomplete",
+            "operation": operation,
+            "params": params,
+            "prompt": generate_crud_prompt(operation, missing)
+        }
+
+    # Validation finale
+    valid, error = validate_crud_data(operation, params)
+    if not valid:
+        return {"type": "error", "message": error}
+
+    # Génération finale
+    queries = generate_crud_queries(operation, params)
+
+    CURRENT_CRUD_CONTEXT = {"operation": None, "params": None}
+
+    return {
+        "type": "crud_complete",
+        "operation": operation,
+        "params": params,
+        "queries": queries
+    }
+
+
 # ============================================================================
 # NOUVELLE FONCTIONNALITÉ : DÉTECTION ET EXPLICATION DE REQUÊTES
 # ============================================================================
@@ -61,8 +114,18 @@ def init_groq_client():
 
 
 # Charger le modèle
-model = SentenceTransformer('all-MiniLM-L6-v2')  # petit et rapide
-
+try:
+    model = SentenceTransformer(
+        'all-MiniLM-L6-v2',
+        cache_folder="./models",
+        local_files_only=True
+    )
+    print("✅ SentenceTransformer chargé depuis le cache local")
+except Exception:
+    print("⚠️ SentenceTransformer indisponible (mode fallback)")
+    model = None
+    
+    
 # Liste des préfixes NL
 prefixes = [
     "analyse:",
@@ -75,7 +138,10 @@ prefixes = [
 ]
 
 # Encoder les préfixes
-prefix_embeddings = model.encode(prefixes, convert_to_tensor=True)
+prefix_embeddings = (
+    model.encode(prefixes, convert_to_tensor=True)
+    if model else None
+)
 
 def normalize_nl_prefix(query: str) -> str:
     """
@@ -427,15 +493,238 @@ def format_explanation_output(analysis: Dict[str, Any]) -> str:
     return output
 
 
+# 🆕 NOUVELLE FONCTION : Détection des champs manquants
+def detect_missing_crud_fields(operation: str, params: Dict[str, Any]) -> List[str]:
+    missing = []
+
+    if operation == 'create':
+        
+        data = params.get('data', {})
+        required_fields = ['name', 'price']  # Champs obligatoires minimaux
+        
+      
+        missing_fields = []
+        for field in required_fields:
+            # ignorer les champs optionnels
+            if "(optionnel)" in field:
+                continue
+            # vérifier les champs obligatoires
+            clean_field = field.split("(")[0].strip()
+            if clean_field not in params or not params[clean_field]:
+                missing_fields.append(clean_field)
+        
+        # Suggérer d'autres champs optionnels
+        optional_fields = ['rating', 'category', 'description']
+        for field in optional_fields:
+            if field not in data:
+                missing.append(f"{field} (optionnel)")
+    
+    elif operation == 'update':
+        filter_q = params.get('filter', {})
+        fields_to_update = params.get('fields_to_update', {})
+        
+        if not filter_q:
+            missing.append("filtre (quel document modifier ?)")
+        
+        if not fields_to_update:
+            missing.append("champs à modifier")
+    
+    elif operation == 'delete':
+        filter_q = params.get('filter', {})
+        
+        if not filter_q:
+            missing.append("filtre (quel document supprimer ?)")
+    
+    return missing
+
+
+# 🆕 NOUVELLE FONCTION : Génération de réponse conversationnelle
+def generate_crud_prompt(operation: str, missing_fields: List[str]) -> str:
+    """
+    Génère un prompt pour demander les informations manquantes
+    """
+    prompts = {
+        'create': {
+            'intro': "🆕 Je vais vous aider à créer un nouveau produit.",
+            'fields': {
+                'name': "📝 Nom du produit",
+                'price': "💰 Prix (en roupies)",
+                'rating': "⭐ Note (0-5)",
+                'category': "📁 Catégorie",
+                'description': "📄 Description"
+            },
+            'example': """
+Exemple :
+Créer un produit avec nom="Clavier Mécanique", prix=89.99, rating=4.5, catégorie="Accessoires"
+"""
+        },
+        'update': {
+            'intro': "✏️ Je vais vous aider à mettre à jour un produit.",
+            'fields': {
+                'id': "🔑 ID du produit à modifier",
+                'name': "📝 Nouveau nom (optionnel)",
+                'price': "💰 Nouveau prix (optionnel)",
+                'rating': "⭐ Nouvelle note (optionnel)"
+            },
+            'example': """
+Exemple :
+Modifier le produit avec id=123, nouveau prix=199, nouveau rating=5
+"""
+        },
+        'delete': {
+            'intro': "🗑️ Je vais vous aider à supprimer un ou plusieurs produits.",
+            'fields': {
+                'id': "🔑 ID du produit à supprimer",
+                'condition': "🔍 Ou une condition (ex: rating < 2)"
+            },
+            'example': """
+Exemples :
+- Supprimer le produit avec id=123
+- Supprimer les produits avec rating < 2
+"""
+        }
+    }
+    
+    config = prompts.get(operation, {})
+    intro = config.get('intro', f"Opération {operation}")
+    fields_info = config.get('fields', {})
+    example = config.get('example', '')
+    
+    # Construire le message
+    message_parts = [intro, "\n\n📋 **Informations requises :**\n"]
+    
+    # Lister les champs manquants
+    for field in missing_fields:
+        # Extraire le nom du champ (sans "(optionnel)")
+        field_name = field.replace(" (optionnel)", "")
+        field_label = fields_info.get(field_name, f"• {field}")
+        is_optional = "(optionnel)" in field
+        
+        if is_optional:
+            message_parts.append(f"{field_label} _(optionnel)_")
+        else:
+            message_parts.append(f"{field_label} **[REQUIS]**")
+    
+    message_parts.append(example)
+    
+    return "\n".join(message_parts)
+
+
+# 🆕 NOUVELLE FONCTION : Validation des données CRUD
+def validate_crud_data(operation: str, params: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Valide les données pour une opération CRUD
+    Retourne: (est_valide, message_erreur)
+    """
+    if operation == 'create':
+        data = params.get('data', {})
+        
+        # Vérifier les champs obligatoires
+        if 'name' not in data or not data['name']:
+            return False, "❌ Le nom du produit est obligatoire"
+        
+        if 'price' in data:
+            try:
+                price = float(data['price'])
+                if price < 0:
+                    return False, "❌ Le prix ne peut pas être négatif"
+            except (ValueError, TypeError):
+                return False, "❌ Le prix doit être un nombre"
+        
+        if 'rating' in data:
+            try:
+                rating = float(data['rating'])
+                if rating < 0 or rating > 5:
+                    return False, "❌ La note doit être entre 0 et 5"
+            except (ValueError, TypeError):
+                return False, "❌ La note doit être un nombre"
+        
+        return True, ""
+    
+    elif operation == 'update':
+        filter_q = params.get('filter', {})
+        fields_to_update = params.get('fields_to_update', {})
+        
+        if not filter_q:
+            return False, "❌ Vous devez spécifier quel document modifier (id ou condition)"
+        
+        if not fields_to_update:
+            return False, "❌ Vous devez spécifier au moins un champ à modifier"
+        
+        return True, ""
+    
+    elif operation == 'delete':
+        filter_q = params.get('filter', {})
+
+        if not filter_q:
+            return False, "❌ Vous devez spécifier quel(s) document(s) supprimer"
+
+        return True, ""
+
+        
 # ============================================================================
 # FONCTIONS ORIGINALES (NL → Query)
 # ============================================================================
 
+# Ajouter dans classifier.py
+
 def detect_query_type(question: str) -> str:
+    """
+    Détecte le type de requête en langage naturel
+    CORRECTION : Amélioré pour détecter les combinaisons complexes
+    """
     q = question.lower()
     
-    # 🔴 D'ABORD vérifier les types de données (priorité)
-    # Types de données
+    # 🆕 DÉTECTION DES REQUÊTES COMPLEXES (COUNT + FILTRE)
+    # Exemple: "le nombre produits nom contient 'TV'"
+    if re.search(r'nombre.*produits.*nom.*contient', q) or \
+       re.search(r'combien.*produits.*nom.*contient', q) or \
+       re.search(r'count.*products.*name.*contains', q, re.IGNORECASE):
+        return "count"  # C'est un comptage avec filtre
+    
+    # 🆕 DÉTECTION DES REQUÊTES AVEC FILTRE TEXTE
+    if re.search(r'produits?.*nom.*contient', q) or \
+       re.search(r'products?.*name.*contains', q, re.IGNORECASE):
+        return "select"  # Sélection avec filtre texte
+    
+    # 🆕 DÉTECTION DES REQUÊTES AVEC RATING FILTRE
+    if re.search(r'rating.*[><=]+.*\d', q) or \
+       re.search(r'note.*[><=]+.*\d', q):
+        return "select"  # Sélection avec filtre numérique
+    
+    # UPDATE / MODIFY en priorité
+    update_keywords = [
+        "mettre à jour", "mettre a jour", "update",
+        "modifier", "modifie", "modify",
+        "changer", "change",
+        "éditer", "editer", "edit",
+        "remplacer", "remplace", "replace"
+    ]
+    if any(w in q for w in update_keywords):
+        return "update"
+    
+    # CREATE / INSERT
+    create_keywords = [
+        "créer", "create", "crée",
+        "insérer", "inserer", "insert", "insère", "insere",
+        "ajouter", "ajoute", "add",
+        "nouveau", "nouvelle", "new",
+        "enregistrer", "enregistre", "save",
+        "je veux créer", "je veux insérer", "je veux ajouter"
+    ]
+    if any(w in q for w in create_keywords):
+        return "create"
+    
+    # DELETE / REMOVE
+    delete_keywords = [
+        "supprimer", "supprime", "delete",
+        "effacer", "efface", "remove",
+        "retirer", "retire", "drop"
+    ]
+    if any(w in q for w in delete_keywords):
+        return "delete"
+    
+    # Types de données (priorité)
     if any(w in q for w in ["type des données", "types des données", "dtype", "schéma", "schema","type", "types"]):
         return "schema"
 
@@ -447,17 +736,17 @@ def detect_query_type(question: str) -> str:
     if any(w in q for w in ["colonnes", "champs", "attributs", "noms des colonnes"]):
         return "columns"
 
-    # 🆕 ENSUITE vérifier les commandes Redis
+    # Vérifier les commandes Redis
     redis_cmd = extract_redis_command(question)
     if redis_cmd:
         return "convert_nosql"
     
-    # 🆕 ENSUITE vérifier si c'est une commande de base de données explicite
+    # Vérifier si c'est une commande de base de données explicite
     db_language = detect_database_language(question)
     if db_language != 'unknown':
         return "convert_nosql"
     
-    # Troisième étape : Mots-clés indiquant une demande d'explication
+    # Mots-clés indiquant une demande d'explication
     explain_keywords = [
         "explique", "explain", "que fait", "qu'est-ce que fait", 
         "analyse", "analyze", "décris", "describe",
@@ -465,11 +754,9 @@ def detect_query_type(question: str) -> str:
         "c'est quoi", "qu'est-ce que c'est", "que fait"
     ]
     
-    # Vérifier si la question contient un mot d'explication
     has_explain_keyword = any(keyword in q for keyword in explain_keywords)
     
     if has_explain_keyword:
-        # Si c'est une question d'explication, on va analyser avec le LLM
         return "convert_nosql"
 
     # Groupement
@@ -492,5 +779,279 @@ def detect_query_type(question: str) -> str:
     if any(w in q for w in ["minimum", "min", "moins cher", "plus bas"]):
         return "min"
 
-    # Sélection par défaut
+    # Sélection par défaut (READ)
     return "select"
+
+
+def extract_crud_params(question: str, operation: str) -> Dict[str, Any]:
+    """
+    Extrait les paramètres pour les opérations CRUD depuis la question
+    """
+    params = {
+        'collection': 'products',  # par défaut
+        'data': {},
+        'filter': {},
+        'fields_to_update': {}
+    }
+    
+    # Détecter la collection/table
+    collections = ['product', 'user', 'order', 'category']
+    for coll in collections:
+        if coll in question.lower():
+            params['collection'] = coll + 's'
+            break
+    
+    if operation == 'create':
+        # Extraire les données à insérer
+        # Pattern: "créer un produit avec nom='X', prix=100, rating=4.5"
+        
+        # Nom/titre
+        name_match = re.search(r'nom[=:\s]+["\']?([^"\',.]+)["\']?', question, re.IGNORECASE)
+        if name_match:
+            params['data']['name'] = name_match.group(1).strip()
+        
+        # Prix
+        price_match = re.search(r'prix[=:\s]+(\d+(?:\.\d+)?)', question, re.IGNORECASE)
+        if price_match:
+            params['data']['price'] = float(price_match.group(1))
+        
+        # Rating
+        rating_match = re.search(r'rating[=:\s]+(\d+(?:\.\d+)?)', question, re.IGNORECASE)
+        if rating_match:
+            params['data']['rating'] = float(rating_match.group(1))
+        
+        # Catégorie
+        category_match = re.search(r'catégorie[=:\s]+["\']?([^"\',.]+)["\']?', question, re.IGNORECASE)
+        if category_match:
+            params['data']['category'] = category_match.group(1).strip()
+            
+        description_match = re.search(r'description[=:\s]+["\']?([^"\']+)["\']?', question, re.IGNORECASE)
+        if description_match:
+            params['data']['description'] = description_match.group(1).strip()
+    
+    elif operation == 'update':
+        # Extraire le filtre (quel document modifier)
+        id_match = re.search(r'id[=:\s]+["\']?([^"\',.]+)["\']?', question, re.IGNORECASE)
+        if id_match:
+            params['filter']['_id'] = id_match.group(1).strip()
+        
+        name_match = re.search(r'nom[=:\s]+["\']?([^"\',.]+)["\']?', question, re.IGNORECASE)
+        if name_match and 'avec nom' in question.lower():
+            params['filter']['name'] = name_match.group(1).strip()
+        
+        # Extraire les champs à mettre à jour
+        # Pattern: "modifier prix=200, rating=5"
+        updates = re.findall(
+            r'(prix|rating|nom|catégorie|description)[=:\s]+["\']?([^"\',.]+)["\']?', 
+            question, re.IGNORECASE
+        )
+        field_map = {
+            'prix': 'price',
+            'rating': 'rating',
+            'nom': 'name',
+            'catégorie': 'category',
+            'description': 'description'   # ← important
+        }
+        for field, value in updates:
+            mapped_field = field_map.get(field.lower(), field)
+            try:
+                params['fields_to_update'][mapped_field] = float(value)
+            except ValueError:
+                params['fields_to_update'][mapped_field] = value
+        
+    
+    elif operation == 'delete':
+        # Extraire le filtre
+        id_match = re.search(r'id[=:\s]+["\']?([^"\',.]+)["\']?', question, re.IGNORECASE)
+        if id_match:
+            params['filter']['_id'] = id_match.group(1).strip()
+        
+        name_match = re.search(r'nom[=:\s]+["\']?([^"\',.]+)["\']?', question, re.IGNORECASE)
+        if name_match:
+            params['filter']['name'] = name_match.group(1).strip()
+        
+        # Conditions
+        rating_match = re.search(r'rating\s*[<>]=?\s*(\d+(?:\.\d+)?)', question)
+        if rating_match:
+            operator = '<' if '<' in question else '>'
+            value = float(rating_match.group(1))
+            params['filter']['rating'] = {'$lt' if operator == '<' else '$gt': value}
+    
+    return params
+
+
+def generate_crud_queries(operation: str, params: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Génère les requêtes CRUD pour toutes les bases de données
+    """
+    collection = params['collection']
+    data = params['data']
+    filter_q = params['filter']
+    fields_to_update = params['fields_to_update']
+    
+    queries = {}
+    
+    # ============================================================================
+    # MONGODB
+    # ============================================================================
+    if operation == 'create':
+        queries['mongodb'] = f"db.{collection}.insertOne({json.dumps(data, indent=2)})"
+    
+    elif operation == 'update':
+        queries['mongodb'] = f"""db.{collection}.updateOne(
+  {json.dumps(filter_q, indent=2)},
+  {{ $set: {json.dumps(fields_to_update, indent=2)} }}
+)"""
+    
+    elif operation == 'delete':
+        queries['mongodb'] = f"db.{collection}.deleteOne({json.dumps(filter_q, indent=2)})"
+    
+    # ============================================================================
+    # REDIS
+    # ============================================================================
+    if operation == 'create':
+        # Stocker comme hash
+        hash_commands = []
+        doc_id = data.get('_id', data.get('id', 'new_id'))
+        for key, value in data.items():
+            hash_commands.append(f"HSET {collection}:{doc_id} {key} \"{value}\"")
+        hash_commands.append(f"SADD {collection}:all {doc_id}")
+        queries['redis'] = "\n".join(hash_commands)
+    
+    elif operation == 'update':
+        doc_id = filter_q.get('_id', filter_q.get('id', 'unknown'))
+        update_commands = []
+        for key, value in fields_to_update.items():
+            update_commands.append(f"HSET {collection}:{doc_id} {key} \"{value}\"")
+        queries['redis'] = "\n".join(update_commands)
+    
+    elif operation == 'delete':
+        doc_id = filter_q.get('_id', filter_q.get('id', 'unknown'))
+        queries['redis'] = f"""DEL {collection}:{doc_id}
+SREM {collection}:all {doc_id}"""
+    
+    # ============================================================================
+    # HBASE
+    # ============================================================================
+    if operation == 'create':
+        row_key = data.get('_id', data.get('id', 'row_key'))
+        put_commands = []
+        for key, value in data.items():
+            if key not in ['_id', 'id']:
+                put_commands.append(f"put '{collection}', '{row_key}', 'data:{key}', '{value}'")
+        queries['hbase'] = "\n".join(put_commands)
+    
+    elif operation == 'update':
+        row_key = filter_q.get('_id', filter_q.get('id', 'row_key'))
+        put_commands = []
+        for key, value in fields_to_update.items():
+            put_commands.append(f"put '{collection}', '{row_key}', 'data:{key}', '{value}'")
+        queries['hbase'] = "\n".join(put_commands)
+    
+    elif operation == 'delete':
+        row_key = filter_q.get('_id', filter_q.get('id', 'row_key'))
+        queries['hbase'] = f"delete '{collection}', '{row_key}'"
+    
+    # ============================================================================
+    # NEO4J
+    # ============================================================================
+    entity = collection[:-1].capitalize()  # products -> Product
+    
+    if operation == 'create':
+        props = ', '.join([f"{k}: \"{v}\"" if isinstance(v, str) else f"{k}: {v}" 
+                          for k, v in data.items()])
+        queries['neo4j'] = f"CREATE (n:{entity} {{{props}}}) RETURN n"
+    
+    elif operation == 'update':
+        # Construire WHERE
+        where_parts = []
+        for key, value in filter_q.items():
+            if isinstance(value, str):
+                where_parts.append(f"n.{key} = \"{value}\"")
+            else:
+                where_parts.append(f"n.{key} = {value}")
+        where_clause = " AND ".join(where_parts) if where_parts else "true"
+        
+        # Construire SET
+        set_parts = []
+        for key, value in fields_to_update.items():
+            if isinstance(value, str):
+                set_parts.append(f"n.{key} = \"{value}\"")
+            else:
+                set_parts.append(f"n.{key} = {value}")
+        set_clause = ", ".join(set_parts)
+        
+        queries['neo4j'] = f"""MATCH (n:{entity})
+WHERE {where_clause}
+SET {set_clause}
+RETURN n"""
+    
+    elif operation == 'delete':
+        where_parts = []
+        for key, value in filter_q.items():
+            if isinstance(value, dict):
+                # Opérateurs
+                if '$gt' in value:
+                    where_parts.append(f"n.{key} > {value['$gt']}")
+                elif '$lt' in value:
+                    where_parts.append(f"n.{key} < {value['$lt']}")
+            elif isinstance(value, str):
+                where_parts.append(f"n.{key} = \"{value}\"")
+            else:
+                where_parts.append(f"n.{key} = {value}")
+        where_clause = " AND ".join(where_parts) if where_parts else "true"
+        
+        queries['neo4j'] = f"""MATCH (n:{entity})
+WHERE {where_clause}
+DETACH DELETE n"""
+    
+    # ============================================================================
+    # SPARQL (Web Sémantique)
+    # ============================================================================
+    if operation == 'create':
+        # SPARQL INSERT
+        triples = []
+        subject = f"ex:{collection}/{data.get('_id', 'new')}"
+        triples.append(f"{subject} rdf:type ex:{entity} .")
+        for key, value in data.items():
+            if key not in ['_id', 'id']:
+                triples.append(f"{subject} ex:{key} \"{value}\" .")
+        
+        queries['web_semantique'] = f"""PREFIX ex: <http://example.org/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+INSERT DATA {{
+  {chr(10).join(['  ' + t for t in triples])}
+}}"""
+    
+    elif operation == 'update':
+        # SPARQL DELETE/INSERT
+        subject = f"ex:{collection}/{filter_q.get('_id', 'unknown')}"
+        delete_triples = []
+        insert_triples = []
+        
+        for key, value in fields_to_update.items():
+            delete_triples.append(f"{subject} ex:{key} ?old{key} .")
+            insert_triples.append(f"{subject} ex:{key} \"{value}\" .")
+        
+        queries['web_semantique'] = f"""PREFIX ex: <http://example.org/>
+
+DELETE {{
+  {chr(10).join(['  ' + t for t in delete_triples])}
+}}
+INSERT {{
+  {chr(10).join(['  ' + t for t in insert_triples])}
+}}
+WHERE {{
+  {chr(10).join(['  ' + t for t in delete_triples])}
+}}"""
+    
+    elif operation == 'delete':
+        subject = f"ex:{collection}/{filter_q.get('_id', 'unknown')}"
+        queries['web_semantique'] = f"""PREFIX ex: <http://example.org/>
+
+DELETE WHERE {{
+  {subject} ?p ?o .
+}}"""
+    
+    return queries

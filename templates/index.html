@@ -104,26 +104,78 @@
         transform: translateY(-2px);
       }
 
-      /* Formulaire */
+      /* Formulaire avec zone de texte améliorée */
       .search-form {
-        display: flex;
-        gap: 10px;
         margin-bottom: 30px;
+        position: relative;
       }
 
-      .search-input {
-        flex: 1;
+      .textarea-container {
+        position: relative;
+      }
+
+      .search-textarea {
+        width: 100%;
+        min-height: 100px;
+        max-height: 400px;
         padding: 15px 20px;
         font-size: 16px;
+        font-family: "Courier New", monospace;
+        line-height: 1.5;
         border: 2px solid #e0e0e0;
         border-radius: 10px;
+        background: #f8f9fa;
+        resize: vertical;
+        white-space: pre;
+        overflow-wrap: normal;
+        overflow-x: auto;
         transition: all 0.3s;
       }
 
-      .search-input:focus {
+      .search-textarea:focus {
         outline: none;
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
+      }
+
+      /* Icône de copie discrète (style DeepSeek) */
+      .copy-icon-deepseek {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        z-index: 10;
+        opacity: 0.5;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .copy-icon-deepseek:hover {
+        opacity: 1;
+        transform: translateY(-1px);
+      }
+
+      .copy-icon-deepseek .square {
+        width: 12px;
+        height: 12px;
+        border: 1px solid #667eea;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 2px;
+      }
+
+      .copy-icon-deepseek .square:nth-child(1) {
+        transform: translateX(-2px) translateY(1px);
+      }
+
+      .copy-icon-deepseek .square:nth-child(2) {
+        transform: translateX(2px) translateY(-8px);
       }
 
       .search-btn {
@@ -136,11 +188,65 @@
         font-weight: 600;
         cursor: pointer;
         transition: transform 0.2s, box-shadow 0.2s;
+        width: 100%;
+        margin-top: 10px;
       }
 
       .search-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      /* Styles pour les cadres de requête avec icône de copie */
+      .query-box-wrapper {
+        position: relative;
+        margin-bottom: 20px;
+      }
+
+      .query-box-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      /* Icône de copie pour les requêtes NoSQL */
+      .copy-icon {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        border-radius: 4px;
+        padding: 5px 8px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #667eea;
+        transition: all 0.2s;
+        z-index: 10;
+        opacity: 0.7;
+      }
+
+      .copy-icon:hover {
+        background: #667eea;
+        color: white;
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      .query-box {
+        background: #1a1a1a;
+        color: #00ff88;
+        padding: 15px;
+        border-radius: 10px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        max-height: 200px;
+        overflow-y: auto;
+        position: relative;
+        white-space: pre-wrap;
+        word-break: break-all;
       }
 
       /* Conversation */
@@ -174,6 +280,8 @@
         color: white;
         margin-left: 20%;
         border-bottom-right-radius: 5px;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
 
       .bot-message {
@@ -294,18 +402,6 @@
         gap: 10px;
       }
 
-      .query-box {
-        background: #1a1a1a;
-        color: #00ff88;
-        padding: 15px;
-        border-radius: 10px;
-        font-family: "Courier New", monospace;
-        font-size: 12px;
-        line-height: 1.4;
-        max-height: 200px;
-        overflow-y: auto;
-      }
-
       .response-box {
         background: #fff8e1;
         padding: 20px;
@@ -378,7 +474,7 @@
         gap: 15px;
         margin-bottom: 25px;
         padding-bottom: 15px;
-        border-bottom: 2px solid; /* nécessaire pour border-image */
+        border-bottom: 2px solid;
         border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-image-slice: 1;
       }
@@ -531,17 +627,23 @@
             </div>
           </div>
 
-          <!-- Formulaire de recherche -->
+          <!-- Formulaire de recherche amélioré -->
           <form method="POST" class="search-form">
-            <input
-              type="text"
-              name="question"
-              id="questionInput"
-              class="search-input"
-              placeholder="Posez votre question ou collez une requête NoSQL..."
-              value="{{ question }}"
-              required
-            />
+            <div class="textarea-container">
+              <textarea
+                name="question"
+                id="questionInput"
+                class="search-textarea"
+                placeholder="Posez votre question ou collez une requête NoSQL..."
+                oninput="autoResize(this)"
+              >{{ question }}</textarea>
+              
+              <!-- Icône de copie discrète style DeepSeek -->
+              <button type="button" class="copy-icon-deepseek" onclick="copyInputText()" title="Copier le texte">
+                <div class="square"></div>
+                <div class="square"></div>
+              </button>
+            </div>
             <button type="submit" class="search-btn">🔍 Analyser</button>
           </form>
 
@@ -559,7 +661,7 @@
             <a href="/clear" class="clear-btn">🗑️ Effacer</a>
           </div>
           <div class="conversation">
-            {% for msg in conversation %} {% if msg.role == 'user' %}
+            {% for msg in conversation|reverse %} {% if msg.role == 'user' %}
             <div class="message user-message">
               <strong>👤 Vous:</strong> {{ msg.text }}
             </div>
@@ -1072,13 +1174,19 @@
               {% if result_type == 'convert_nosql' %} 🔍 Requête Analysée {%
               else %} 🍃 MongoDB {% endif %}
             </h3>
-            {% if sql_query %}
-            <div class="query-box" style="white-space: pre-wrap">
-              {{ sql_query }}
+            <div class="query-box-wrapper">
+              {% if sql_query %}
+
+
+               <button type="button" class="copy-icon-deepseek" onclick="copyQuery('sql')" title="Copier le texte">
+                <div class="square"></div>
+                <div class="square"></div>
+              </button>
+              <div class="query-box" id="sql-query">{{ sql_query }}</div>
+              {% else %}
+              <div class="query-box">// Aucune requête générée</div>
+              {% endif %}
             </div>
-            {% else %}
-            <div class="query-box">// Aucune requête générée</div>
-            {% endif %}
           </div>
 
           <!-- 🆕 MASQUER LES AUTRES BASES EN MODE ANALYSE -->
@@ -1086,44 +1194,80 @@
           <!-- Autres bases de données -->
           <div class="query-section">
             <h3 class="section-title">🔴 Redis</h3>
-            {% if redis_query %}
-            <div
-              class="query-box"
-              style="background: #2d1e1e; color: #ff6b6b; white-space: wrap"
-            >
-              {{ redis_query }}
+            <div class="query-box-wrapper">
+              {% if redis_query %}
+                <button type="button" class="copy-icon-deepseek" onclick="copyQuery('redis')" title="Copier le texte">
+                <div class="square"></div>
+                <div class="square"></div>
+              </button>
+              <div
+                class="query-box"
+                id="redis-query"
+                style="background: #2d1e1e; color: #ff6b6b"
+              >
+                {{ redis_query }}
+              </div>
+              {% else %}
+              <div
+                class="query-box"
+                style="background: #2d1e1e; color: #ff6b6b"
+              >
+                # Aucune requête
+              </div>
+              {% endif %}
             </div>
-            {% else %}
-            <div class="query-box" style="background: #2d1e1e; color: #ff6b6b">
-              # Aucune requête
-            </div>
-            {% endif %}
           </div>
 
           <div class="query-section">
             <h3 class="section-title">🗄️ HBase</h3>
-            {% if hbase_query %}
-            <div class="query-box" style="background: #1e2d1e; color: #88ff88">
-              {{ hbase_query }}
+            <div class="query-box-wrapper">
+              {% if hbase_query %}
+                <button type="button" class="copy-icon-deepseek" onclick="copyQuery('hbase')"title="Copier le texte">
+                <div class="square"></div>
+                <div class="square"></div>
+              </button>
+              <div
+                class="query-box"
+                id="hbase-query"
+                style="background: #1e2d1e; color: #88ff88"
+              >
+                {{ hbase_query }}
+              </div>
+              {% else %}
+              <div
+                class="query-box"
+                style="background: #1e2d1e; color: #88ff88"
+              >
+                # Aucune requête
+              </div>
+              {% endif %}
             </div>
-            {% else %}
-            <div class="query-box" style="background: #1e2d1e; color: #88ff88">
-              # Aucune requête
-            </div>
-            {% endif %}
           </div>
 
           <div class="query-section">
             <h3 class="section-title">🔵 Neo4j (Cypher)</h3>
-            {% if neo4j_query %}
-            <div class="query-box" style="background: #1e1e2d; color: #6bb6ff">
-              {{ neo4j_query }}
+            <div class="query-box-wrapper">
+              {% if neo4j_query %}
+                <button type="button" class="copy-icon-deepseek" onclick="copyQuery('neo4j')"title="Copier le texte">
+                <div class="square"></div>
+                <div class="square"></div>
+              </button>
+              <div
+                class="query-box"
+                id="neo4j-query"
+                style="background: #1e1e2d; color: #6bb6ff"
+              >
+                {{ neo4j_query }}
+              </div>
+              {% else %}
+              <div
+                class="query-box"
+                style="background: #1e1e2d; color: #6bb6ff"
+              >
+                // Aucune requête
+              </div>
+              {% endif %}
             </div>
-            {% else %}
-            <div class="query-box" style="background: #1e1e2d; color: #6bb6ff">
-              // Aucune requête
-            </div>
-            {% endif %}
           </div>
           {% endif %}
 
@@ -1145,9 +1289,67 @@
     </div>
 
     <script>
+      // Fonction pour remplir le champ de texte avec les exemples
       function fillQuery(text) {
-        document.getElementById("questionInput").value = text;
+        const textarea = document.getElementById("questionInput");
+        textarea.value = text;
+        autoResize(textarea);
       }
+
+      // Fonction pour ajuster automatiquement la hauteur du textarea
+      function autoResize(textarea) {
+        textarea.style.height = "auto";
+        textarea.style.height = textarea.scrollHeight + "px";
+      }
+
+      // Fonction pour copier le texte de la zone de saisie
+      function copyInputText() {
+        const textarea = document.getElementById("questionInput");
+        textarea.select();
+        document.execCommand("copy");
+        
+        // Feedback visuel sur l'icône DeepSeek
+        const btn = event.target.closest("button");
+        const originalHTML = btn.innerHTML;
+        
+        // Animation de succès
+        btn.innerHTML = `
+          <div class="square" style="background: #4CAF50; border-color: #4CAF50;"></div>
+          <div class="square" style="background: #4CAF50; border-color: #4CAF50;"></div>
+        `;
+        
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+        }, 1000);
+      }
+
+      // Fonction pour copier les requêtes NoSQL
+      function copyQuery(type) {
+        const queryBox = document.getElementById(`${type}-query`);
+        if (!queryBox) return;
+        
+        const text = queryBox.textContent;
+        navigator.clipboard.writeText(text);
+        
+        // Feedback visuel
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = "✓";
+        btn.style.background = "#4CAF50";
+        
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = "";
+        }, 2000);
+      }
+
+      // Initialiser la hauteur du textarea au chargement
+      document.addEventListener("DOMContentLoaded", function() {
+        const textarea = document.getElementById("questionInput");
+        if (textarea) {
+          autoResize(textarea);
+        }
+      });
     </script>
   </body>
 </html>

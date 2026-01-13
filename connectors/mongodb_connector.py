@@ -1,107 +1,49 @@
-# connectors/connector.py
+import yaml
 import json
 import pandas as pd
 import os
 
-class DataLoader:
-    """
-    Classe pour charger et nettoyer les données depuis un fichier JSON
-    """
 
-    def __init__(self, path="data/mongo_amazon.json"):
-        self.path = path
+class DataLoader:
+    def __init__(self, config_path="config/mongodb.yaml"):
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        self.path = config["data"]["path"]
+        self.encoding = config["data"].get("encoding", "utf-8")
         self.df = pd.DataFrame()
 
     def load_data(self) -> pd.DataFrame:
-        """
-        Charge les données depuis le fichier JSON et crée un DataFrame
-        """
         if not os.path.exists(self.path):
-            print(f"❌ Erreur : Fichier '{self.path}' non trouvé")
-            self.df = pd.DataFrame()
-            return self.df
+            print(f"❌ Fichier introuvable : {self.path}")
+            return pd.DataFrame()
 
-        try:
-            with open(self.path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            print(f"✅ Données chargées : {len(data)} produits")
-        except json.JSONDecodeError:
-            print(f"❌ Erreur : Format JSON invalide dans {self.path}")
-            data = []
+        with open(self.path, "r", encoding=self.encoding) as f:
+            data = json.load(f)
 
-        # Créer le DataFrame
-        if not data:
-            print("⚠️ Aucune donnée, création d'un DataFrame vide")
-            self.df = pd.DataFrame()
-        else:
-            self.df = pd.DataFrame(data)
-            print(f"✅ DataFrame créé avec {len(self.df)} lignes et {len(self.df.columns)} colonnes")
-
+        self.df = pd.DataFrame(data)
         return self.df
 
     def clean_numeric_columns(self) -> pd.DataFrame:
-        """
-        Nettoie les colonnes numériques du DataFrame self.df
-        """
         if self.df.empty:
-            print("⚠️ DataFrame vide, rien à nettoyer")
             return self.df
 
-        # Nettoyer rating
-        if 'rating' in self.df.columns:
-            self.df['rating'] = pd.to_numeric(
-                self.df['rating'].astype(str).str.replace(',', '', regex=False).fillna('0'),
-                errors='coerce'
+        if "rating" in self.df.columns:
+            self.df["rating"] = pd.to_numeric(
+                self.df["rating"].astype(str).str.replace(",", "", regex=False),
+                errors="coerce"
             )
 
-        # Nettoyer les prix
-        for price_col in ['discounted_price', 'actual_price']:
-            if price_col in self.df.columns:
-                self.df[price_col] = pd.to_numeric(
-                    self.df[price_col].astype(str).str.replace(r'[^\d.]', '', regex=True).fillna('0'),
-                    errors='coerce'
+        for col in ["discounted_price", "actual_price"]:
+            if col in self.df.columns:
+                self.df[col] = pd.to_numeric(
+                    self.df[col].astype(str).str.replace(r"[^\d.]", "", regex=True),
+                    errors="coerce"
                 )
 
-        print("✅ Colonnes numériques nettoyées")
         return self.df
 
-    def get_dataframe(self) -> pd.DataFrame:
-        """
-        Retourne le DataFrame nettoyé
-        """
-        if self.df.empty:
-            self.load_data()
-        self.clean_numeric_columns()
-        return self.df
-
-    # 🔹 Méthode init_data() dans la classe
     def init_data(self) -> pd.DataFrame:
-        """
-        Initialise les données depuis le fichier JSON avec la logique de init_data() originale
-        """
-        if not os.path.exists(self.path):
-            print(f"❌ Erreur : Fichier '{self.path}' non trouvé")
-            self.df = pd.DataFrame()
-            return self.df
-
-        try:
-            with open(self.path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            print(f"✅ Données chargées : {len(data)} produits")
-        except json.JSONDecodeError:
-            print(f"❌ Erreur : Format JSON invalide dans {self.path}")
-            data = []
-
-        if not data:
-            print("⚠️ Aucune donnée chargée, création d'un DataFrame vide")
-            self.df = pd.DataFrame()
-            return self.df
-
-        # Création du DataFrame
-        self.df = pd.DataFrame(data)
-        print(f"✅ DataFrame créé avec {len(self.df)} lignes et {len(self.df.columns)} colonnes")
-
-        # Nettoyage rating et prix
+        self.load_data()
         self.clean_numeric_columns()
-
         return self.df

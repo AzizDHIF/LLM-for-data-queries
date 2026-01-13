@@ -1,0 +1,3 @@
+data:
+  path: "data/mongo_amazon.json"
+  encoding: "utf-8"
