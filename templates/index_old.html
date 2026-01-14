@@ -245,6 +245,7 @@
         max-height: 200px;
         overflow-y: auto;
         position: relative;
+        white-space: pre-wrap;
         word-break: break-all;
       }
 
@@ -279,6 +280,7 @@
         color: white;
         margin-left: 20%;
         border-bottom-right-radius: 5px;
+        white-space: pre-wrap;
         word-break: break-word;
       }
 
@@ -575,16 +577,6 @@
         <p class="subtitle">
           Traduction bidirectionnelle : Langage Naturel ↔ Requêtes NoSQL
         </p>
-     
-        <!-- Sélecteur de base de données -->
-
-
-
-
-
-
-
-
       </header>
 
       <div class="app-container">
@@ -636,17 +628,7 @@
           </div>
 
           <!-- Formulaire de recherche amélioré -->
-  <form method="POST" class="search-form">    
-    <div style="margin-bottom: 20px; text-align: center;">
-        <label for="db_select" style="font-weight: bold; margin-right: 10px;">Choisir DB :</label>
-        <select name="db_choice" id="db_select" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc;">
-            <option value="mongodb" {% if selected_db == 'mongodb' %}selected{% endif %}>MongoDB</option>
-            <option value="redis" {% if selected_db == 'redis' %}selected{% endif %}>Redis</option>
-            <option value="hbase" {% if selected_db == 'hbase' %}selected{% endif %}>HBase</option>
-            <option value="neo4j" {% if selected_db == 'neo4j' %}selected{% endif %}>Neo4j</option>
-            <option value="semantic_web" {% if selected_db == 'semantic_web' %}selected{% endif %}>Web sémantique</option>
-        </select>
-    </div>
+          <form method="POST" class="search-form">
             <div class="textarea-container">
               <textarea
                 name="question"
@@ -654,23 +636,14 @@
                 class="search-textarea"
                 placeholder="Posez votre question ou collez une requête NoSQL..."
                 oninput="autoResize(this)"
-              >
-{{ question }}</textarea
-              >
-
+              >{{ question }}</textarea>
+              
               <!-- Icône de copie discrète style DeepSeek -->
-              <button
-                type="button"
-                class="copy-icon-deepseek"
-                onclick="copyInputText()"
-                title="Copier le texte"
-              >
+              <button type="button" class="copy-icon-deepseek" onclick="copyInputText()" title="Copier le texte">
                 <div class="square"></div>
                 <div class="square"></div>
               </button>
             </div>
-
-
             <button type="submit" class="search-btn">🔍 Analyser</button>
           </form>
 
@@ -704,8 +677,8 @@
           <div class="results-section">
             <div class="results-header">
               <h2 class="results-title">
-                📊 Résultats {% if results.type %}
-                <span class="result-badge">{{ results.type.upper() }}</span>
+                📊 Résultats {% if result_type %}
+                <span class="result-badge">{{ result_type.upper() }}</span>
                 {% endif %}
               </h2>
             </div>
@@ -1202,18 +1175,14 @@
               else %} 🍃 MongoDB {% endif %}
             </h3>
             <div class="query-box-wrapper">
-              {% if mongo_query %}
+              {% if sql_query %}
 
-              <button
-                type="button"
-                class="copy-icon-deepseek"
-                onclick="copyQuery('sql')"
-                title="Copier le texte"
-              >
+
+               <button type="button" class="copy-icon-deepseek" onclick="copyQuery('sql')" title="Copier le texte">
                 <div class="square"></div>
                 <div class="square"></div>
               </button>
-              <div class="query-box" id="sql-query">{{ mongo_query }}</div>
+              <div class="query-box" id="sql-query">{{ sql_query }}</div>
               {% else %}
               <div class="query-box">// Aucune requête générée</div>
               {% endif %}
@@ -1227,12 +1196,7 @@
             <h3 class="section-title">🔴 Redis</h3>
             <div class="query-box-wrapper">
               {% if redis_query %}
-              <button
-                type="button"
-                class="copy-icon-deepseek"
-                onclick="copyQuery('redis')"
-                title="Copier le texte"
-              >
+                <button type="button" class="copy-icon-deepseek" onclick="copyQuery('redis')" title="Copier le texte">
                 <div class="square"></div>
                 <div class="square"></div>
               </button>
@@ -1258,12 +1222,7 @@
             <h3 class="section-title">🗄️ HBase</h3>
             <div class="query-box-wrapper">
               {% if hbase_query %}
-              <button
-                type="button"
-                class="copy-icon-deepseek"
-                onclick="copyQuery('hbase')"
-                title="Copier le texte"
-              >
+                <button type="button" class="copy-icon-deepseek" onclick="copyQuery('hbase')"title="Copier le texte">
                 <div class="square"></div>
                 <div class="square"></div>
               </button>
@@ -1289,12 +1248,7 @@
             <h3 class="section-title">🔵 Neo4j (Cypher)</h3>
             <div class="query-box-wrapper">
               {% if neo4j_query %}
-              <button
-                type="button"
-                class="copy-icon-deepseek"
-                onclick="copyQuery('neo4j')"
-                title="Copier le texte"
-              >
+                <button type="button" class="copy-icon-deepseek" onclick="copyQuery('neo4j')"title="Copier le texte">
                 <div class="square"></div>
                 <div class="square"></div>
               </button>
@@ -1334,9 +1288,6 @@
       </div>
     </div>
 
-  
-   <div> {{ pretty_results }} </div>
-
     <script>
       // Fonction pour remplir le champ de texte avec les exemples
       function fillQuery(text) {
@@ -1356,17 +1307,17 @@
         const textarea = document.getElementById("questionInput");
         textarea.select();
         document.execCommand("copy");
-
+        
         // Feedback visuel sur l'icône DeepSeek
         const btn = event.target.closest("button");
         const originalHTML = btn.innerHTML;
-
+        
         // Animation de succès
         btn.innerHTML = `
           <div class="square" style="background: #4CAF50; border-color: #4CAF50;"></div>
           <div class="square" style="background: #4CAF50; border-color: #4CAF50;"></div>
         `;
-
+        
         setTimeout(() => {
           btn.innerHTML = originalHTML;
         }, 1000);
@@ -1376,16 +1327,16 @@
       function copyQuery(type) {
         const queryBox = document.getElementById(`${type}-query`);
         if (!queryBox) return;
-
+        
         const text = queryBox.textContent;
         navigator.clipboard.writeText(text);
-
+        
         // Feedback visuel
         const btn = event.target;
         const originalText = btn.textContent;
         btn.textContent = "✓";
         btn.style.background = "#4CAF50";
-
+        
         setTimeout(() => {
           btn.textContent = originalText;
           btn.style.background = "";
@@ -1393,23 +1344,12 @@
       }
 
       // Initialiser la hauteur du textarea au chargement
-      document.addEventListener("DOMContentLoaded", function () {
+      document.addEventListener("DOMContentLoaded", function() {
         const textarea = document.getElementById("questionInput");
         if (textarea) {
           autoResize(textarea);
         }
       });
-
-let db_choice = document.getElementById('db_select').value;
-
-fetch('/query', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        question: questionInput.value,
-        db_choice: db_choice
-    })
-});
     </script>
   </body>
 </html>

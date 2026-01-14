@@ -1,3 +1,14 @@
+# config/config.yaml
+
 data:
-  path: "data/mongo_amazon.json"
+  path: "data/movies.json"
   encoding: "utf-8"
+
+mongodb:
+  host: "localhost"        # adresse du conteneur Docker
+  port: 27017              # port exposé
+  username: "admin"        # utilisateur MongoDB
+  password: "secret"       # mot de passe
+  auth_db: "admin"         # DB pour l'authentification
+  database: "sample_mflix" # nom de la base de données
+  collection: "movies"     # nom de la collection

@@ -1,49 +1,43 @@
-import yaml
-import json
-import pandas as pd
-import os
+# connectors/mongodb_connector.py
 
+import pandas as pd
+from pymongo import MongoClient
 
 class DataLoader:
-    def __init__(self, config_path="config/mongodb.yaml"):
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
+    def __init__(self, host="localhost", port=27017, username="admin", password="secret",
+                 database="sample_mflix", collection="movies"):
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.database = database
+        self.collection = collection
+        self.client = None
+        self.db = None
+        self.col = None
 
-        self.path = config["data"]["path"]
-        self.encoding = config["data"].get("encoding", "utf-8")
-        self.df = pd.DataFrame()
+    def connect(self):
+        """Connecte au MongoDB Docker"""
+        self.client = MongoClient(
+            host=self.host,
+            port=self.port,
+            username=self.username,
+            password=self.password,
+            authSource="admin"  # correspond à MONGO_INITDB_ROOT_USERNAME/MONGO_INITDB_ROOT_PASSWORD
+        )
+        self.db = self.client[self.database]
+        self.col = self.db[self.collection]
 
-    def load_data(self) -> pd.DataFrame:
-        if not os.path.exists(self.path):
-            print(f"❌ Fichier introuvable : {self.path}")
-            return pd.DataFrame()
-
-        with open(self.path, "r", encoding=self.encoding) as f:
-            data = json.load(f)
-
-        self.df = pd.DataFrame(data)
-        return self.df
-
-    def clean_numeric_columns(self) -> pd.DataFrame:
-        if self.df.empty:
-            return self.df
-
-        if "rating" in self.df.columns:
-            self.df["rating"] = pd.to_numeric(
-                self.df["rating"].astype(str).str.replace(",", "", regex=False),
-                errors="coerce"
-            )
-
-        for col in ["discounted_price", "actual_price"]:
-            if col in self.df.columns:
-                self.df[col] = pd.to_numeric(
-                    self.df[col].astype(str).str.replace(r"[^\d.]", "", regex=True),
-                    errors="coerce"
-                )
-
-        return self.df
-
-    def init_data(self) -> pd.DataFrame:
-        self.load_data()
-        self.clean_numeric_columns()
-        return self.df
+    def init_data(self):
+        """Récupère toutes les données sous forme de DataFrame"""
+        if not self.col:
+            self.connect()
+        data = list(self.col.find())
+        # Aplatir imdb si nécessaire
+        for d in data:
+            if "imdb" in d:
+                d["imdb.rating"] = d["imdb"].get("rating")
+                d["imdb.votes"] = d["imdb"].get("votes")
+                del d["imdb"]
+        df = pd.DataFrame(data)
+        return df
