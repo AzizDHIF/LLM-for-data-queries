@@ -1,0 +1,22 @@
+services:
+  zookeeper:
+    image: zookeeper:3.8
+    container_name: zookeeper
+    platform: linux/amd64
+    ports:
+      - "2181:2181"
+
+  hbase:
+    image: harisekhon/hbase
+    platform: linux/amd64
+    container_name: hbase
+    depends_on:
+      - zookeeper
+    environment:
+      - HBASE_MANAGES_ZK=false
+    ports:
+      - "16010:16010"   # HBase UI
+      - "9090:9090"     # Thrift
+    volumes:
+      - ./hbase/conf:/conf
+

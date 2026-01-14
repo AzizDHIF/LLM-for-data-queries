@@ -85,7 +85,6 @@ For searching:
 
 def generate_redis_command(user_request: str) -> dict:
     try : 
-        # FIX 1: Changed 'messages' to 'contents' - the correct parameter name
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=user_request,
@@ -102,13 +101,11 @@ def generate_redis_command(user_request: str) -> dict:
             # Debug: Print what we received
         print(f"\n🔍 Debug - Raw response:\n{content_text}\n")
             
-            # Clean up markdown code blocks if present
         if content_text.startswith("```json"):
                 content_text = content_text.replace("```json", "").replace("```", "").strip()
         elif content_text.startswith("```"):
                 content_text = content_text.replace("```", "").strip()
             
-            # Try to parse JSON
         return json.loads(content_text)
             
     except json.JSONDecodeError as e:
@@ -157,10 +154,6 @@ def execute_redis_command(cmd: dict):
         return results
     else:
         raise ValueError(f"Unknown command type: {command}")
-
-# =============================
-# CHAT LOOP
-# =============================
 
 def chat():
     print("\n🎬 Redis AI Assistant ")

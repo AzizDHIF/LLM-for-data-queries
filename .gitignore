@@ -1,0 +1,5 @@
+projet/
+utils/
+*.log
+temp/
+.DS_Store   
