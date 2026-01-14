@@ -1,9 +1,17 @@
 # app/llm/gemini_client.py
 
 from google import genai
-from app.llm.prompt_templates import build_cypher_prompt
-from app.llm.llm_utils import clean_cypher_output
 
+from app.llm.prompt_templates import (
+    build_read_prompt,
+    build_write_prompt
+)
+from app.llm.llm_utils import (
+    clean_cypher_output,
+    detect_query_type,
+    parse_llm_output
+
+)
 class GeminiClient:
     """
     Wrapper pour le LLM Gemini : génère des requêtes Cypher à partir de NL.
@@ -25,25 +33,40 @@ class GeminiClient:
         self.client = genai.Client(api_key=api_key)
         self.model = model
 
+
+
+
+
     def generate_cypher(self, nl_query, schema):
-        """
-        Génère une requête Cypher à partir d'une NL query et d'un schéma Neo4j.
-        :param nl_query: str
-        :param schema: dict
-        :return: str (requête Cypher)
-        """
-        # Construire le prompt avec le template
-        prompt = build_cypher_prompt(nl_query, schema)
+     
+        query_type = detect_query_type(nl_query)
 
-        # Appeler Gemini via la librairie officielle
-        response = self.client.models.generate_content(
+        if query_type == "write":
+
+            prompt = build_write_prompt(nl_query, schema)
+            response = self.client.models.generate_content(
             model=self.model,
-            contents=prompt
-        )
+            contents=prompt,
+            
+            )
+            return parse_llm_output(response.text)
 
-        raw_output = response.text
-        cypher_query = clean_cypher_output(raw_output)
-        return cypher_query
+            
+        else:
+            prompt = build_read_prompt(nl_query, schema)
+            response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            
+            )
+            return response.text
+
+
+       
+        
+
+        
+
 
 
 # --- Test rapide ---
