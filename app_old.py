@@ -17,7 +17,7 @@ from llm.classifier_old import (
 )
 
 # Importations Redis
-from llm.redis_llm import (
+from llm.redis_llm_old import (
     generate_redis_query,
     execute_redis_query,
     init_redis,

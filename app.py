@@ -9,6 +9,7 @@ from executers.mongodb_executer import MongoExecutor
 from llm.neo4j_llm import Neo4jExecutor, Neo4jSchemaExtractor, GeminiClient
 from utils.neo4j_llm_utils import detect_query_type
 from connectors.api import load_gemini_config
+from llm.redis_llm import generate_redis_command, execute_redis_command
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "secret-key-123")
@@ -83,6 +84,7 @@ def index():
     response_text = ""
     mongo_query = ""
     cypher_query = ""
+    redis_query= ""
     headers = []
     table_rows = []
     pretty_results = ""
@@ -180,6 +182,15 @@ def index():
                             response_text = "✅ Write executed successfully"
                             headers, table_rows = json_to_table({"data": results.get("result", [])})
 
+                elif selected_db == "redis":
+                    response = generate_redis_command(normalized_question, neo4j_schema)
+                    redis_query = response
+                    results = execute_redis_command(redis_query)
+                    pretty_results = json.dumps(results, indent=4, ensure_ascii=False)
+                    response_text = generate_response_text(results)
+                    headers, table_rows = json_to_table({"data": results.get("result", [])})
+                   
+                        
 
                 else:
                     results = []
@@ -207,6 +218,7 @@ def index():
         response=response_text,
         mongo_query=mongo_query,
         neo4j_query=cypher_query,
+        redis_query=redis_query,
         table_rows=table_rows,
         selected_db=selected_db,
         pretty_results=pretty_results,

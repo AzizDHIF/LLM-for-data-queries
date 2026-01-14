@@ -15,7 +15,7 @@ services:
     environment:
       - HBASE_MANAGES_ZK=false
     ports:
-      - "16010:16010"   # HBase UI
-      - "9090:9090"     # Thrift
+      - "16010:16010" # HBase UI
+      - "9090:9090" # Thrift
     volumes:
       - ./hbase/conf:/conf

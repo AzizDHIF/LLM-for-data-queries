@@ -11,7 +11,7 @@ connection.open()
 
 movies_table = connection.table("movies")
 
-movies = pd.read_csv("movies_updated.csv")
+movies = pd.read_csv("data/movies_updated.csv")
 
 for _, row in movies.iterrows():
     movies_table.put(
