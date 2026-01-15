@@ -23,22 +23,37 @@ class RDF_DATA:
             "User-Agent": "NL2SPARQL-StudentProject"
         }
         
-        print(f"\n📤 Sending SPARQL query to Fuseki...")
-        print(f"📝 Query:\n{sparql_query}\n")
+        print(f"\n🔍 Recherche en cours dans la base de données...")
         
-        response = requests.post(
-            self.endpoint,
-            data={"query": sparql_query},
-            headers=headers
-        )
+        # Affichage optionnel de la requête technique (peut être commenté)
+        if hasattr(self, 'debug_mode') and self.debug_mode:
+            print(f"📝 Requête technique:\n{sparql_query}\n")
         
-        if response.status_code != 200:
-            print(f"❌ HTTP Error {response.status_code}")
-            print(f"📝 Details: {response.text}")
-            raise Exception(f"SPARQL Error: {response.status_code} - {response.text}")
-        
-        print("✅ Query executed successfully\n")
-        return response.json()
+        try:
+            response = requests.post(
+                self.endpoint,
+                data={"query": sparql_query},
+                headers=headers,
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Erreur lors de la recherche")
+                print(f"💡 Le serveur a renvoyé une erreur. Veuillez vérifier votre connexion.")
+                raise Exception(f"Erreur de connexion au serveur (Code: {response.status_code})")
+            
+            print("✅ Recherche terminée avec succès\n")
+            return response.json()
+            
+        except requests.exceptions.Timeout:
+            print("⏱️ La recherche a pris trop de temps. Veuillez réessayer.")
+            raise Exception("Délai d'attente dépassé")
+        except requests.exceptions.ConnectionError:
+            print("🔌 Impossible de se connecter au serveur de données.")
+            raise Exception("Erreur de connexion")
+        except Exception as e:
+            print(f"❌ Une erreur est survenue: {str(e)}")
+            raise
 
 if __name__ == '__main__':
     sparql_query = """

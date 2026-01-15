@@ -1,0 +1,190 @@
+Natural language;generated_SPARQL;the correct sparql
+List all films.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?film
+WHERE {
+  ?film rdf:type ex:Film .
+}";SELECT ?film WHERE { ?film a ex:Film . }
+Show all film titles with their release year.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title ?year
+WHERE {
+  ?film rdf:type ex:Film .
+  ?film ex:title ?title .
+  ?film ex:year ?year .
+}";"SELECT ?title ?year WHERE { ?film a ex:Film ; ex:title ?title ; ex:year ?year . }"
+Which films were directed by Christopher Nolan?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?filmTitle
+WHERE {
+  ?film ex:director ?director .
+  ?director ex:name ""Christopher Nolan"" .
+  ?film ex:title ?filmTitle .
+}";"SELECT ?title WHERE { ?film ex:director ex:Christopher_Nolan ; ex:title ?title . }"
+Which films feature Leonardo DiCaprio?;"PREFIX ex: <http://example.org/movies/>
+SELECT ?filmTitle
+WHERE {
+    ?film ex:actor ?actor .
+    ?actor ex:name ""Leonardo DiCaprio"" .
+    ?film ex:title ?filmTitle .
+}";"SELECT ?title WHERE { ?film ex:actor ex:Leonardo_DiCaprio ; ex:title ?title . }"
+List films produced by Emma Thomas.;"PREFIX ex: <http://example.org/movies/>
+SELECT ?title
+WHERE {
+    ?producer ex:name ""Emma Thomas"" .
+    ?film ex:producer ?producer .
+    ?film ex:title ?title .
+}";"SELECT ?title WHERE { ?film ex:producer ex:Emma_Thomas ; ex:title ?title . }"
+Which films were released after 2010?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title
+WHERE {
+  ?film rdf:type ex:Film .
+  ?film ex:year ?year .
+  ?film ex:title ?title .
+  FILTER(?year > 2010)
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:year ?year . FILTER(?year > 2010) }"
+Which films have a rating higher than 8.5?;"PREFIX ex: <http://example.org/movies/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?title
+WHERE {
+  ?film a ex:Film .
+  ?film ex:title ?title .
+  ?film ex:rating ?rating .
+  FILTER (?rating > 8.5)
+}";"SELECT ?title ?rating WHERE { ?film ex:title ?title ; ex:rating ?rating . FILTER(?rating > 8.5) }"
+List all science fiction films.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title
+WHERE {
+  ?film rdf:type ex:Film .
+  ?film ex:hasGenre ex:Science_Fiction .
+  ?film ex:title ?title .
+}";"SELECT ?title WHERE { ?film ex:hasGenre ex:ScienceFiction ; ex:title ?title . }"
+Which films belong to more than one genre?;"PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title
+WHERE {
+  ?film a ex:Film ;
+        ex:title ?title ;
+        ex:hasGenre ?genre .
+}
+GROUP BY ?film ?title
+HAVING (COUNT(?genre) > 1)";"SELECT ?title (COUNT(?genre) AS ?nbGenres)
+        WHERE { ?film ex:title ?title ; ex:hasGenre ?genre . }
+        GROUP BY ?title
+        HAVING(COUNT(?genre) > 1)"
+Which films were directed and produced by the same person?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?filmTitle ?personName
+WHERE {
+  ?film ex:director ?person .
+  ?film ex:producer ?person .
+  ?film ex:title ?filmTitle .
+  ?person ex:name ?personName .
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:director ?p ; ex:producer ?p . }"
+Which films were produced in the USA?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?filmTitle
+WHERE {
+  ?film a ex:Film ;
+        ex:hasCountry ?country ;
+        ex:title ?filmTitle .
+  ?country rdfs:label ""USA"" .
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:hasCountry ex:USA . }"
+Which films are longer than 150 minutes?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title
+WHERE {
+  ?film a ex:Film .
+  ?film ex:title ?title .
+  ?film ex:duration ?duration .
+  FILTER(?duration > 150)
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:duration ?d . FILTER(?d > 150) }"
+Which actors have appeared in more than one film?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?actorName
+WHERE {
+  ?film ex:actor ?actor .
+  ?actor ex:name ?actorName .
+}
+GROUP BY ?actorName
+HAVING (COUNT(?film) > 1)";"SELECT ?actor (COUNT(?film) AS ?count)
+        WHERE { ?film ex:actor ?actor . }
+        GROUP BY ?actor
+        HAVING(COUNT(?film) > 1)"
+How many films are in the database?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT (COUNT(?film) AS ?filmCount)
+WHERE {
+  ?film a ex:Film .
+}";SELECT (COUNT(?film) AS ?count) WHERE { ?film a ex:Film . }
+List films released between 2000 and 2015.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?film ?title
+WHERE {
+  ?film a ex:Film .
+  ?film ex:title ?title .
+  ?film ex:year ?year .
+  FILTER (?year >= 2000 && ?year <= 2015)
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:year ?year . FILTER(?year >= 2000 && ?year <= 2015) }"
+Which films starring Leonardo DiCaprio were released after 2000?;"PREFIX ex: <http://example.org/movies/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?title
+WHERE {
+  ?film ex:actor ?actor .
+  ?actor ex:name ""Leonardo DiCaprio"" .
+  ?film ex:year ?year .
+  ?film ex:title ?title .
+  FILTER (?year > 2000)
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:actor ex:Leonardo_DiCaprio ; ex:year ?year . FILTER(?year > 2000) }"
+Which Christopher Nolan films have a rating above 8.7?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?title
+WHERE {
+  ?film rdf:type ex:Film ;
+        ex:director ?director ;
+        ex:rating ?rating ;
+        ex:title ?title .
+  ?director ex:name ""Christopher Nolan"" .
+  FILTER (?rating > 8.7)
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:director ex:Christopher_Nolan ; ex:rating ?rating . FILTER(?rating > 8.7) }"
+What is the average release year of all films?;"PREFIX ex: <http://example.org/movies/>
+SELECT (AVG(?year) AS ?avg_release_year)
+WHERE {
+  ?film a ex:Film .
+  ?film ex:year ?year .
+}";SELECT (AVG(?year) AS ?avgYear) WHERE { ?film ex:year ?year . }
+Which films were produced by someone different from the director?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT DISTINCT ?title
+WHERE {
+  ?film a ex:Film ;
+        ex:title ?title ;
+        ex:producer ?producer ;
+        ex:director ?director .
+  FILTER(?producer != ?director)
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:director ?d ; ex:producer ?p . FILTER(?d != ?p) }"
+What are the most common film genres?;"PREFIX ex: <http://example.org/movies/>
+SELECT ?genre (COUNT(?film) AS ?filmCount)
+WHERE {
+  ?film ex:hasGenre ?genre .
+}
+GROUP BY ?genre
+ORDER BY DESC(?filmCount)";SELECT ?genre (COUNT(?film) AS ?count) WHERE { ?film ex:hasGenre ?genre . } GROUP BY ?genre ORDER BY DESC(?count)

@@ -1,12 +1,99 @@
 @prefix ex: <http://example.org/movies/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+####################
+# GENRES
+####################
+
+ex:ScienceFiction a ex:Genre .
+ex:Drama a ex:Genre .
+ex:Action a ex:Genre .
+ex:Crime a ex:Genre .
+ex:Romance a ex:Genre .
+
+####################
+# COUNTRIES
+####################
+
+ex:USA a ex:Country .
+ex:UK a ex:Country .
+
+####################
+# PERSONS
+####################
+
+ex:Leonardo_DiCaprio a ex:Person ;
+    ex:name "Leonardo DiCaprio" ;
+    ex:birthYear 1974 .
+
+ex:Joseph_Gordon_Levitt a ex:Person ;
+    ex:name "Joseph Gordon-Levitt" ;
+    ex:birthYear 1981 .
+
+ex:Matthew_McConaughey a ex:Person ;
+    ex:name "Matthew McConaughey" ;
+    ex:birthYear 1969 .
+
+ex:Christian_Bale a ex:Person ;
+    ex:name "Christian Bale" ;
+    ex:birthYear 1974 .
+
+ex:Christopher_Nolan a ex:Person ;
+    ex:name "Christopher Nolan" ;
+    ex:birthYear 1970 .
+
+ex:Emma_Thomas a ex:Person ;
+    ex:name "Emma Thomas" ;
+    ex:birthYear 1971 .
+
+ex:James_Cameron a ex:Person ;
+    ex:name "James Cameron" ;
+    ex:birthYear 1954 .
+
+####################
+# FILMS
+####################
 
 ex:Inception a ex:Film ;
     ex:title "Inception" ;
     ex:year 2010 ;
-    ex:actor ex:Leonardo_DiCaprio ;
+    ex:duration 148 ;
+    ex:rating 8.8 ;
+    ex:hasGenre ex:ScienceFiction ;
+    ex:hasCountry ex:USA ;
+    ex:actor ex:Leonardo_DiCaprio , ex:Joseph_Gordon_Levitt ;
     ex:director ex:Christopher_Nolan ;
     ex:producer ex:Emma_Thomas .
 
-ex:Leonardo_DiCaprio a ex:Person .
-ex:Christopher_Nolan a ex:Person .
-ex:Emma_Thomas a ex:Person .
+ex:Interstellar a ex:Film ;
+    ex:title "Interstellar" ;
+    ex:year 2014 ;
+    ex:duration 169 ;
+    ex:rating 8.6 ;
+    ex:hasGenre ex:ScienceFiction , ex:Drama ;
+    ex:hasCountry ex:USA ;
+    ex:actor ex:Matthew_McConaughey ;
+    ex:director ex:Christopher_Nolan ;
+    ex:producer ex:Emma_Thomas .
+
+ex:The_Dark_Knight a ex:Film ;
+    ex:title "The Dark Knight" ;
+    ex:year 2008 ;
+    ex:duration 152 ;
+    ex:rating 9.0 ;
+    ex:hasGenre ex:Action , ex:Crime ;
+    ex:hasCountry ex:USA ;
+    ex:actor ex:Christian_Bale ;
+    ex:director ex:Christopher_Nolan ;
+    ex:producer ex:Emma_Thomas .
+
+ex:Titanic a ex:Film ;
+    ex:title "Titanic" ;
+    ex:year 1997 ;
+    ex:duration 195 ;
+    ex:rating 7.9 ;
+    ex:hasGenre ex:Drama , ex:Romance ;
+    ex:hasCountry ex:USA ;
+    ex:actor ex:Leonardo_DiCaprio ;
+    ex:director ex:James_Cameron ;
+    ex:producer ex:James_Cameron .
