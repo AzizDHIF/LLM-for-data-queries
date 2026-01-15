@@ -566,6 +566,35 @@
         font-style: italic;
         border: 2px dashed rgba(255, 255, 255, 0.4);
       }
+
+.results-container {
+    width: 100%;
+    max-width: 100%;
+    height: 420px;              /* 🔒 hauteur FIXE */
+    margin-top: 15px;
+    border: 2px solid #1f2937;  /* cadre visible */
+    border-radius: 12px;
+    background: #020617;
+    overflow: hidden;           /* empêche le chaos */
+}
+
+.json-box {
+    height: 100%;
+    padding: 16px;
+    margin: 0;
+
+    font-family: "Fira Code", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #e5e7eb;
+
+    overflow-x: auto;           /* 👉 scroll horizontal */
+    overflow-y: auto;           /* 👉 scroll vertical */
+    white-space: pre;           /* garde le JSON intact */
+
+    box-sizing: border-box;
+}
+
     </style>
   </head>
   <body>
@@ -577,11 +606,6 @@
         </p>
      
         <!-- Sélecteur de base de données -->
-
-
-
-
-
 
 
 
@@ -645,7 +669,7 @@
             <option value="redis" {% if selected_db == 'redis' %}selected{% endif %}>Redis</option>
             <option value="hbase" {% if selected_db == 'hbase' %}selected{% endif %}>HBase</option>
             <option value="neo4j" {% if selected_db == 'neo4j' %}selected{% endif %}>Neo4j</option>
-            <option value="semantic_web" {% if selected_db == 'semantic_web' %}selected{% endif %}>Web sémantique</option>
+            <option value="rdf" {% if selected_db == 'rdf' %}selected{% endif %}>Web sémantique</option>
             <option value="all" {% if selected_db == 'all' %}selected{% endif %}>All</option>
         </select>
     </div>
@@ -1179,6 +1203,11 @@
               <p>{{ metadata.message }}</p>
             </div>
 
+             {% elif pretty_results %}
+              <div class="results-container">
+                <pre class="json-box">{{ pretty_results }}</pre>
+              </div>
+
             {% else %}
             <div class="empty-state">
               <div style="font-size: 48px; margin-bottom: 20px">💡</div>
@@ -1316,6 +1345,39 @@
               </div>
               {% endif %}
             </div>
+
+
+  <div class="query-section">
+  <h3 class="section-title">🧬 RDF / SPARQL</h3>
+  <div class="query-box-wrapper">
+    {% if rdf_query %}
+    <button
+      type="button"
+      class="copy-icon-deepseek"
+      onclick="copyQuery('rdf')"
+      title="Copier le texte"
+    >
+      <div class="square"></div>
+      <div class="square"></div>
+    </button>
+    <div
+      class="query-box"
+      id="rdf-query"
+      style="background: #2b1e2d; color: #e0b3ff"
+    >
+      {{ rdf_query }}
+    </div>
+    {% else %}
+    <div
+      class="query-box"
+      style="background: #2b1e2d; color: #e0b3ff"
+    >
+      # Aucune requête RDF
+    </div>
+    {% endif %}
+  </div>
+</div>
+
           </div>
           {% endif %}
 
@@ -1337,7 +1399,7 @@
     </div>
 
   
-   <div> {{ pretty_results }} </div>
+
 
     <script>
       // Fonction pour remplir le champ de texte avec les exemples

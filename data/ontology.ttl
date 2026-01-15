@@ -1,0 +1,73 @@
+@prefix ex: <http://example.org/movies/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+####################
+# CLASSES
+####################
+
+ex:Film a owl:Class .
+
+ex:Person a owl:Class .
+
+ex:Genre a owl:Class .
+
+ex:Country a owl:Class .
+
+####################
+# OBJECT PROPERTIES
+####################
+
+ex:actor a owl:ObjectProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range ex:Person .
+
+ex:director a owl:ObjectProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range ex:Person .
+
+ex:producer a owl:ObjectProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range ex:Person .
+
+ex:hasGenre a owl:ObjectProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range ex:Genre .
+
+ex:hasCountry a owl:ObjectProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range ex:Country .
+
+####################
+# DATATYPE PROPERTIES (Film)
+####################
+
+ex:title a owl:DatatypeProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range xsd:string .
+
+ex:year a owl:DatatypeProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range xsd:integer .
+
+ex:duration a owl:DatatypeProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range xsd:integer .
+
+ex:rating a owl:DatatypeProperty ;
+    rdfs:domain ex:Film ;
+    rdfs:range xsd:decimal .
+
+####################
+# DATATYPE PROPERTIES (Person)
+####################
+
+ex:name a owl:DatatypeProperty ;
+    rdfs:domain ex:Person ;
+    rdfs:range xsd:string .
+
+ex:birthYear a owl:DatatypeProperty ;
+    rdfs:domain ex:Person ;
+    rdfs:range xsd:integer .
