@@ -1,0 +1,41 @@
+Natural language;generated_neo4j;the correct neo4j
+List all movies.;MATCH (m:Movie) RETURN m.title;MATCH (m:Movie) RETURN m.title
+Find all people.;MATCH (p:Person) RETURN p;MATCH (p:Person) RETURN p.name, p.born
+Who acted in 'Inception'?;"MATCH (p:Person)-[:ACTED_IN]->(:Movie {title: 'Inception'})
+RETURN p.name";MATCH (p:Person)-[:ACTED_IN]->(m:Movie {title: 'Inception'}) RETURN p.name
+Which movies were directed by Christopher Nolan?;"MATCH (:Person {name: 'Christopher Nolan'})-[:DIRECTED]->(m:Movie)
+RETURN m.title";MATCH (p:Person {name: 'Christopher Nolan'})-[:DIRECTED]->(m:Movie) RETURN m.title
+Who produced the movie 'Interstellar'?;"MATCH (p:Person)-[:PRODUCED]->(m:Movie {title: 'Interstellar'})
+RETURN p.name";MATCH (p:Person)-[:PRODUCED]->(m:Movie {title: 'Interstellar'}) RETURN p.name
+List movies released after 2010.;"MATCH (m:Movie)
+WHERE m.released > 2010
+RETURN m.title";MATCH (m:Movie) WHERE m.released > 2010 RETURN m.title, m.released
+Find movies written by 'Jonathan Nolan'.;"MATCH (:Person {name: 'Jonathan Nolan'})-[:WROTE]->(m:Movie)
+RETURN m";MATCH (p:Person {name: 'Jonathan Nolan'})-[:WROTE]->(m:Movie) RETURN m.title
+Who follows Leonardo DiCaprio?;"MATCH (p1:Person)-[:FOLLOWS]->(p2:Person {name: 'Leonardo DiCaprio'})
+RETURN p1.name";MATCH (follower:Person)-[:FOLLOWS]->(p:Person {name: 'Leonardo DiCaprio'}) RETURN follower.name
+Which movies has 'Leonardo DiCaprio' acted in?;"MATCH (:Person {name: 'Leonardo DiCaprio'})-[:ACTED_IN]->(m:Movie)
+RETURN m.title";MATCH (p:Person {name: 'Leonardo DiCaprio'})-[:ACTED_IN]->(m:Movie) RETURN m.title, m.released
+Find movies reviewed by 'Alice'.;"MATCH (:Person {name: 'Alice'})-[:REVIEWED]->(m:Movie)
+RETURN m";MATCH (p:Person {name: 'Alice'})-[:REVIEWED]->(m:Movie) RETURN m.title, m.released
+Who directed and wrote 'Memento'?;"MATCH (p:Person)-[:DIRECTED]->(m:Movie {title: 'Memento'}), (p)-[:WROTE]->(m)
+RETURN p.name";MATCH (p:Person)-[:DIRECTED]->(m:Movie {title: 'Memento'}), (p)-[:WROTE]->(m) RETURN p.name
+List movies produced by 'Emma Thomas'.;"MATCH (:Person {name: 'Emma Thomas'})-[:PRODUCED]->(m:Movie)
+RETURN m.title";MATCH (p:Person {name: 'Emma Thomas'})-[:PRODUCED]->(m:Movie) RETURN m.title
+Which movies did 'Christian Bale' act in after 2005?;"MATCH (p:Person {name: 'Christian Bale'})-[:ACTED_IN]->(m:Movie)
+WHERE m.released > 2005
+RETURN m.title";MATCH (p:Person {name: 'Christian Bale'})-[:ACTED_IN]->(m:Movie) WHERE m.released > 2005 RETURN m.title, m.released
+Find all actors in movies directed by 'Christopher Nolan'.;"MATCH (p:Person {name: 'Christopher Nolan'})-[:DIRECTED]->(m:Movie)<-[:ACTED_IN]-(actor:Person)
+RETURN DISTINCT actor.name";MATCH (d:Person {name:'Christopher Nolan'})-[:DIRECTED]->(m:Movie)<-[:ACTED_IN]-(a:Person) RETURN a.name, m.title
+Who follows people that acted in 'Inception'?;"MATCH (p1:Person)-[:FOLLOWS]->(:Person)-[:ACTED_IN]->(:Movie {title: 'Inception'})
+RETURN DISTINCT p1.name";MATCH (f:Person)-[:FOLLOWS]->(p:Person)-[:ACTED_IN]->(m:Movie {title:'Inception'}) RETURN f.name, p.name
+List all movies reviewed after 2015.;"MATCH (m:Movie)<-[:REVIEWED]-()
+WHERE m.released > 2015
+RETURN DISTINCT m.title";MATCH (p:Person)-[:REVIEWED]->(m:Movie) WHERE m.released > 2015 RETURN m.title, p.name
+Find movies acted by both 'Leonardo DiCaprio' and 'Joseph Gordon-Levitt'.;"MATCH (:Person {name: 'Leonardo DiCaprio'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(:Person {name: 'Joseph Gordon-Levitt'})
+RETURN m.title";MATCH (p1:Person {name:'Leonardo DiCaprio'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(p2:Person {name:'Joseph Gordon-Levitt'}) RETURN m.title
+Who produced movies written by 'Jonathan Nolan'?;"MATCH (producer:Person)-[:PRODUCED]->(:Movie)<-[:WROTE]-(:Person {name: 'Jonathan Nolan'})
+RETURN DISTINCT producer.name";MATCH (writer:Person {name:'Jonathan Nolan'})-[:WROTE]->(m:Movie)<-[:PRODUCED]-(producer:Person) RETURN producer.name, m.title
+Find all people who both acted and wrote a movie.;"MATCH (p:Person)-[:ACTED_IN]->(:Movie), (p)-[:WROTE]->(:Movie)
+RETURN DISTINCT p.name";MATCH (p:Person)-[:ACTED_IN]->(m:Movie), (p)-[:WROTE]->(m) RETURN p.name, m.title
+List movies released between 2000 and 2010.;MATCH (m:Movie) WHERE m.released >= 2000 AND m.released <= 2010 RETURN m.title;MATCH (m:Movie) WHERE m.released >= 2000 AND m.released <= 2010 RETURN m.title, m.released

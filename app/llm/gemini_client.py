@@ -2,11 +2,11 @@
 
 from google import genai
 
-from app.llm.prompt_templates import (
+from prompt_templates import (
     build_read_prompt,
     build_write_prompt
 )
-from app.llm.llm_utils import (
+from llm_utils import (
     clean_cypher_output,
     detect_query_type,
     parse_llm_output
@@ -72,7 +72,8 @@ class GeminiClient:
 
 
 # --- Test rapide ---
-if __name__ == "__main__":
+
+
 
 
 

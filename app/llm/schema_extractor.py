@@ -32,6 +32,6 @@ class Neo4jSchemaExtractor:
         }
 
 if __name__ == "__main__":
-    extractor = Neo4jSchemaExtractor("bolt://localhost:7687", "neo4j", "password")
+    extractor = Neo4jSchemaExtractor("bolt://localhost:7687", "neo4j", "Azizdhif30032001")
     schema = extractor.extract_schema()
     print(schema)
