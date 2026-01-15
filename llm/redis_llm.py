@@ -19,6 +19,9 @@ client = Client(api_key=API_KEY)
 
 # Connect to Redis Stack (RediSearch enabled)
 r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+print(r.keys("*"))
+indexes = r.execute_command("FT._LIST")
+print("les indexes sont:", indexes)
 
 SYSTEM_PROMPT = """
 You are an AI assistant that translates NATURAL LANGUAGE into precise Redis commands.
@@ -153,18 +156,34 @@ def execute_redis_command(cmd: dict):
             cmd["query"],
             "LIMIT", 0, limit
         )
-        count = raw[0]
+        # raw[0] = count
         results = []
         for i in range(1, len(raw), 2):
             doc_id = raw[i]
-            fields = raw[i+1]
+            fields = raw[i+1] if i+1 < len(raw) else []
             doc = {"id": doc_id}
-            for j in range(0, len(fields), 2):
+            # transformer les champs en dictionnaire en vérifiant les paires
+            for j in range(0, len(fields)-1, 2):
                 doc[fields[j]] = fields[j+1]
             results.append(doc)
-        return results
+        return {"result": results, "count": raw[0]}
     else:
         raise ValueError(f"Unknown command type: {command}")
+
+def normalize_redis_command(cmd):
+    # Cas 1 : le LLM a retourné une liste
+    if isinstance(cmd, list):
+        for item in cmd:
+            if isinstance(item, dict) and "example" in item:
+                return item["example"]
+        raise ValueError("No executable Redis command found in list")
+
+    # Cas 2 : tout va bien
+    if isinstance(cmd, dict) and "command" in cmd:
+        return cmd
+
+    raise ValueError("Invalid Redis command format")
+
 
 def chat():
     print("\n🎬 Redis AI Assistant ")

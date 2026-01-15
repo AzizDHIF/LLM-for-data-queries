@@ -1,9 +1,14 @@
-from groq import Groq
+import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, util
 from typing import Dict, List, Any, Tuple
 import os 
 import re
 import json
+from connectors.api import load_gemini_config
+
+config = load_gemini_config()
+API_KEY = config["api_key"]
+MODEL = config.get("model", "gemini-2.5-pro")
 
 
 CURRENT_CRUD_CONTEXT = {
@@ -84,32 +89,16 @@ def extract_redis_command(text: str) -> str | None:
     return None
 
 
-
-
-
-def init_groq_client():
-    """Initialise le client Groq"""
-    global client, groq_available
-    
-    try:
-        api_key = os.getenv("GROQ_API_KEY")
-        
-        if not api_key or api_key == "votre_clé_api_groq_ici":
-            print("⚠️ GROQ_API_KEY non configurée ou invalide")
-            print("💡 Conseil: Ajoutez GROQ_API_KEY=votre_clé_réelle dans le fichier .env")
-            client = None
-            groq_available = False
-            return client, groq_available
-            
-        client = Groq(api_key=api_key)
-        print("✅ Client Groq initialisé")
-        groq_available = True
-    except Exception as e:
-        print(f"❌ Erreur client Groq : {e}")
-        client = None
-        groq_available = False
-    
-    return client, groq_available
+# Fonction pour charger la configuration Gemini
+def load_gemini_config():
+    """Charge la configuration Gemini depuis le fichier de configuration"""
+    # Ici vous devriez implémenter votre propre logique de chargement de configuration
+    # Par exemple, depuis un fichier JSON ou YAML
+    # Pour l'exemple, je retourne une configuration par défaut
+    return {
+        "api_key": os.getenv("GEMINI_API_KEY", ""),
+        "model": "gemini-1.5-pro"  # Utilisez "gemini-2.5-pro" quand disponible
+    }
 
 
 
@@ -307,17 +296,25 @@ def detect_database_language(query: str) -> str:
 
 
 # ============================================================================
-# EXPLICATION VIA LLM
+# EXPLICATION VIA LLM (AVEC GEMINI)
 # ============================================================================
 
 def explain_query_with_llm(query: str, db_language: str) -> Dict[str, Any]:
     """
-    Utilise le LLM pour expliquer une requête de base de données
+    Utilise Gemini pour expliquer une requête de base de données
     """
-    if not groq_available:
+    global gemini_client, gemini_available
+    
+    from google.genai import Client
+    config = load_gemini_config()
+    API_KEY = config["api_key"]
+    MODEL = config.get("model", "gemini-2.5-pro")
+    client = Client(api_key=API_KEY)
+    
+    if not gemini_available:
         return {
-            'error': 'LLM non disponible',
-            'message': 'Veuillez configurer GROQ_API_KEY'
+            'error': 'Gemini non disponible',
+            'message': 'Veuillez configurer correctement l\'API Gemini'
         }
     
     # Contexte spécifique selon le langage
@@ -367,7 +364,7 @@ INSTRUCTIONS:
 4. **Résultat attendu**: Décris le type de résultat retourné
 5. **Optimisation**: Suggère des améliorations si possible
 
-Réponds en JSON avec cette structure:
+Réponds UNIQUEMENT en JSON avec cette structure exacte:
 {{
   "language": "{db_language}",
   "objective": "Description courte de l'objectif",
@@ -379,33 +376,35 @@ Réponds en JSON avec cette structure:
   "optimization_tips": ["Conseil 1", "Conseil 2"],
   "human_readable": "Traduction en langage naturel de la requête"
 }}
+
+Ne retourne rien d'autre que le JSON.
 """
     
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": "Tu es un expert en bases de données. Réponds uniquement en JSON valide."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2,
-            max_tokens=1500
-        )
+        # Utiliser Gemini au lieu de Groq
+        response = client.models.generate_content(prompt)
         
-        explanation_str = response.choices[0].message.content.strip()
+        if not response or not response.text:
+            raise Exception("Réponse vide de Gemini")
+        
+        explanation_str = response.text.strip()
+        
+        # Nettoyer la réponse (retirer les backticks de code si présents)
         explanation_str = explanation_str.replace('```json', '').replace('```', '').strip()
         
+        # Parser le JSON
         explanation = json.loads(explanation_str)
         return explanation
         
     except json.JSONDecodeError as e:
         print(f"❌ Erreur de parsing JSON: {e}")
+        print(f"Réponse brute: {explanation_str[:500]}")
         return {
             'error': 'Parsing JSON échoué',
-            'raw_response': explanation_str[:500]
+            'raw_response': explanation_str[:500] if 'explanation_str' in locals() else 'Pas de réponse'
         }
     except Exception as e:
-        print(f"❌ Erreur LLM: {e}")
+        print(f"❌ Erreur Gemini: {e}")
         return {'error': str(e)}
 
 
@@ -431,7 +430,7 @@ def analyze_query(query: str) -> Dict[str, Any]:
             'suggestion': 'Vérifiez la syntaxe ou précisez le type de base de données'
         }
     
-    # 2. Explication avec le LLM
+    # 2. Explication avec Gemini
     explanation = explain_query_with_llm(query, db_language)
     
     # 3. Retourner le résultat complet
@@ -451,6 +450,10 @@ def format_explanation_output(analysis: Dict[str, Any]) -> str:
         return f"❌ {analysis.get('message', 'Erreur inconnue')}"
     
     explanation = analysis.get('explanation', {})
+    
+    # Vérifier si l'explication contient une erreur
+    if 'error' in explanation:
+        return f"❌ Erreur d'explication: {explanation.get('error')}"
     
     output = f"""
 {'='*80}
@@ -1055,3 +1058,8 @@ DELETE WHERE {{
 }}"""
     
     return queries
+
+
+# Variables globales pour Gemini
+gemini_client = None
+gemini_available = False

@@ -640,11 +640,13 @@
     <div style="margin-bottom: 20px; text-align: center;">
         <label for="db_select" style="font-weight: bold; margin-right: 10px;">Choisir DB :</label>
         <select name="db_choice" id="db_select" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc;">
+            
             <option value="mongodb" {% if selected_db == 'mongodb' %}selected{% endif %}>MongoDB</option>
             <option value="redis" {% if selected_db == 'redis' %}selected{% endif %}>Redis</option>
             <option value="hbase" {% if selected_db == 'hbase' %}selected{% endif %}>HBase</option>
             <option value="neo4j" {% if selected_db == 'neo4j' %}selected{% endif %}>Neo4j</option>
             <option value="semantic_web" {% if selected_db == 'semantic_web' %}selected{% endif %}>Web sémantique</option>
+            <option value="all" {% if selected_db == 'all' %}selected{% endif %}>All</option>
         </select>
     </div>
             <div class="textarea-container">
