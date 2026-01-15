@@ -89,17 +89,6 @@ def extract_redis_command(text: str) -> str | None:
     return None
 
 
-# Fonction pour charger la configuration Gemini
-def load_gemini_config():
-    """Charge la configuration Gemini depuis le fichier de configuration"""
-    # Ici vous devriez implémenter votre propre logique de chargement de configuration
-    # Par exemple, depuis un fichier JSON ou YAML
-    # Pour l'exemple, je retourne une configuration par défaut
-    return {
-        "api_key": os.getenv("GEMINI_API_KEY", ""),
-        "model": "gemini-1.5-pro"  # Utilisez "gemini-2.5-pro" quand disponible
-    }
-
 
 
 # Charger le modèle
@@ -296,84 +285,20 @@ def detect_database_language(query: str) -> str:
 
 
 # ============================================================================
-# EXPLICATION VIA LLM (AVEC GEMINI)
-# ============================================================================
-def init_gemini_client():
-    """Initialise le client Gemini avec la nouvelle API google.genai"""
-    global gemini_client, gemini_available
-    
-    try:
-        from google.genai import Client
-        
-        # Charger la configuration
-        config = load_gemini_config()
-        API_KEY = config.get("api_key")
-        MODEL = config.get("model", "gemini-2.5-pro")
-        
-        if not API_KEY:
-            print("⚠️ API_KEY Gemini non configurée ou invalide")
-            gemini_client = None
-            gemini_available = False
-            return gemini_client, gemini_available
-        
-        # Créer le client avec la nouvelle API
-        gemini_client = Client(api_key=API_KEY)
-        
-        print(f"✅ Client Gemini (nouvelle API) initialisé (modèle: {MODEL})")
-        gemini_available = True
-        
-    except ImportError:
-        # Fallback à l'ancienne API
-        try:
-            import google.generativeai as genai
-            
-            config = load_gemini_config()
-            API_KEY = "AIzaSyBpUHVjdEne7ul7SGONlWQeRtRAs84M8QM"
-            
-            if not API_KEY:
-                print("⚠️ API_KEY Gemini non configurée")
-                gemini_client = None
-                gemini_available = False
-                return gemini_client, gemini_available
-            
-            # Configurer avec l'ancienne API
-            genai.configure(api_key=API_KEY)
-            
-            # Créer le modèle
-            gemini_client = genai.GenerativeModel(
-                model_name=MODEL,
-                generation_config={
-                    "temperature": 0.2,
-                    "top_p": 0.95,
-                    "top_k": 40,
-                    "max_output_tokens": 1500,
-                }
-            )
-            
-            print(f"✅ Client Gemini (ancienne API) initialisé (modèle: {MODEL})")
-            gemini_available = True
-            
-        except Exception as e:
-            print(f"❌ Erreur lors de l'initialisation de Gemini: {e}")
-            gemini_client = None
-            gemini_available = False
-    
-    except Exception as e:
-        print(f"❌ Erreur client Gemini : {e}")
-        gemini_client = None
-        gemini_available = False
-    
-    return gemini_client, gemini_available
+
 
 def explain_query_with_llm(query: str, db_language: str) -> Dict[str, Any]:
     """
     Utilise Gemini pour expliquer une requête de base de données
     """
-    global gemini_client, gemini_available
     
     # Charger la configuration
+    from google.genai import Client
     config = load_gemini_config()
-    API_KEY = "AIzaSyBpUHVjdEne7ul7SGONlWQeRtRAs84M8QM"
+    API_KEY = config["api_key"]
+    MODEL = config.get("model", "gemini-2.5-pro")
+    client = Client(api_key=API_KEY)
+
     
     # Vérifier que la clé API est valide
     if not API_KEY:
@@ -381,16 +306,6 @@ def explain_query_with_llm(query: str, db_language: str) -> Dict[str, Any]:
         return {
             'error': 'Clé API manquante',
             'message': 'Veuillez configurer l\'API Gemini'
-        }
-    
-    # Initialiser Gemini si nécessaire
-    if not gemini_available:
-        gemini_client, gemini_available = init_gemini_client()
-    
-    if not gemini_available or gemini_client is None:
-        return {
-            'error': 'Gemini non disponible',
-            'message': 'Le service d\'explication n\'est pas accessible'
         }
     
     # Contexte spécifique selon le langage
@@ -460,7 +375,7 @@ Ne retourne rien d'autre que le JSON.
         print(f"📤 Envoi de la requête à Gemini ({db_language})...")
         
         # Utiliser le client Gemini global
-        response = gemini_client.generate_content(prompt)
+        response = client.models.generate_content(model=MODEL, contents=prompt)
         
         if not response:
             raise Exception("Réponse vide de Gemini")
@@ -756,84 +671,35 @@ def validate_crud_data(operation: str, params: Dict[str, Any]) -> Tuple[bool, st
 # ============================================================================
 
 # Ajouter dans classifier.py
+import re
 
 def detect_query_type1(question: str) -> str:
     """
-    Détecte le type de requête en langage naturel
-    CORRECTION : Amélioré pour détecter les combinaisons complexes
+    Détection SIMPLE :
+    - convert_nosql : si l'utilisateur écrit une vraie requête (SQL, Mongo, Cypher, Redis, RDF…)
+    - convert_nlp : sinon
     """
-    q = question.lower()
-    
-    # 🆕 DÉTECTION DES REQUÊTES COMPLEXES (COUNT + FILTRE)
-    # Exemple: "le nombre produits nom contient 'TV'"
-    if re.search(r'nombre.*produits.*nom.*contient', q) or \
-       re.search(r'combien.*produits.*nom.*contient', q) or \
-       re.search(r'count.*products.*name.*contains', q, re.IGNORECASE):
-        return "count"  # C'est un comptage avec filtre
-    
-    # 🆕 DÉTECTION DES REQUÊTES AVEC FILTRE TEXTE
-    if re.search(r'produits?.*nom.*contient', q) or \
-       re.search(r'products?.*name.*contains', q, re.IGNORECASE):
-        return "select"  # Sélection avec filtre texte
-    
-    # 🆕 DÉTECTION DES REQUÊTES AVEC RATING FILTRE
-    if re.search(r'rating.*[><=]+.*\d', q) or \
-       re.search(r'note.*[><=]+.*\d', q):
-        return "select"  # Sélection avec filtre numérique
-    
-    # UPDATE / MODIFY en priorité
-    update_keywords = [
-        "mettre à jour", "mettre a jour", "update",
-        "modifier", "modifie", "modify",
-        "changer", "change",
-        "éditer", "editer", "edit",
-        "remplacer", "remplace", "replace"
-    ]
-    if any(w in q for w in update_keywords):
-        return "update"
-    
-    # CREATE / INSERT
-    create_keywords = [
-        "créer", "create", "crée",
-        "insérer", "inserer", "insert", "insère", "insere",
-        "ajouter", "ajoute", "add",
-        "nouveau", "nouvelle", "new",
-        "enregistrer", "enregistre", "save",
-        "je veux créer", "je veux insérer", "je veux ajouter"
-    ]
-    if any(w in q for w in create_keywords):
-        return "create"
-    
-    # DELETE / REMOVE
-    delete_keywords = [
-        "supprimer", "supprime", "delete",
-        "effacer", "efface", "remove",
-        "retirer", "retire", "drop"
-    ]
-    if any(w in q for w in delete_keywords):
-        return "delete"
-    
-    # Types de données (priorité)
-    if any(w in q for w in ["type des données", "types des données", "dtype", "schéma", "schema","type", "types"]):
-        return "schema"
+    q = question.strip().lower()
 
-    # Profil / description complète
-    if any(w in q for w in ["information", "informations", "description", "résumé", "profil", "profilage"]):
-        return "data_profile"
+    # # 🔹 SQL
+    # if re.search(r'\b(select|insert|update|delete|from|where|group by|join)\b', q):
+    #     return "convert_nosql"
 
-    # Colonnes uniquement
-    if any(w in q for w in ["colonnes", "champs", "attributs", "noms des colonnes"]):
-        return "columns"
+    # # 🔹 MongoDB
+    # if re.search(r'\b(db\.\w+\.find|aggregate|insertOne|updateOne|deleteOne)\b', q):
+    #     return "convert_nosql"
 
-    # Vérifier les commandes Redis
-    redis_cmd = extract_redis_command(question)
-    if redis_cmd:
-        return "convert_nosql"
-    
-    # Vérifier si c'est une commande de base de données explicite
-    db_language = detect_database_language(question)
-    if db_language != 'unknown':
-        return "convert_nosql"
+    # # 🔹 Neo4j / Cypher
+    # if re.search(r'\b(match|return|create|merge|detach delete)\b', q):
+    #     return "convert_nosql"
+
+    # # 🔹 Redis
+    # if re.search(r'\b(get|set|hget|hset|del|ft.search)\b', q):
+    #     return "convert_nosql"
+
+    # # 🔹 SPARQL / RDF
+    # if re.search(r'\b(select|where|prefix)\b.*\{', q):
+    #     return "convert_nosql"
     
     # Mots-clés indiquant une demande d'explication
     explain_keywords = [
@@ -848,28 +714,123 @@ def detect_query_type1(question: str) -> str:
     if has_explain_keyword:
         return "convert_nosql"
 
-    # Groupement
-    if any(w in q for w in ["grouper", "group by", "par catégorie", "par type", "par prix"]):
-        return "group"
+    # 🧠 Tout le reste = NLP
+    return "convert_nlp"
 
-    # Agrégations
-    if any(w in q for w in ["moyenne", "moyen", "average", "avg"]):
-        return "avg"
 
-    if any(w in q for w in ["combien", "nombre", "count", "total"]):
-        return "count"
+# def detect_query_type1(question: str) -> str:
+#     """
+#     Détecte le type de requête en langage naturel
+#     CORRECTION : Amélioré pour détecter les combinaisons complexes
+#     """
+#     q = question.lower()
+    
+#     # 🆕 DÉTECTION DES REQUÊTES COMPLEXES (COUNT + FILTRE)
+#     # Exemple: "le nombre produits nom contient 'TV'"
+#     if re.search(r'nombre.*produits.*nom.*contient', q) or \
+#        re.search(r'combien.*produits.*nom.*contient', q) or \
+#        re.search(r'count.*products.*name.*contains', q, re.IGNORECASE):
+#         return "count"  # C'est un comptage avec filtre
+    
+#     # 🆕 DÉTECTION DES REQUÊTES AVEC FILTRE TEXTE
+#     if re.search(r'produits?.*nom.*contient', q) or \
+#        re.search(r'products?.*name.*contains', q, re.IGNORECASE):
+#         return "select"  # Sélection avec filtre texte
+    
+#     # 🆕 DÉTECTION DES REQUÊTES AVEC RATING FILTRE
+#     if re.search(r'rating.*[><=]+.*\d', q) or \
+#        re.search(r'note.*[><=]+.*\d', q):
+#         return "select"  # Sélection avec filtre numérique
+    
+#     # UPDATE / MODIFY en priorité
+#     update_keywords = [
+#         "mettre à jour", "mettre a jour", "update",
+#         "modifier", "modifie", "modify",
+#         "changer", "change",
+#         "éditer", "editer", "edit",
+#         "remplacer", "remplace", "replace"
+#     ]
+#     if any(w in q for w in update_keywords):
+#         return "update"
+    
+#     # CREATE / INSERT
+#     create_keywords = [
+#         "créer", "create", "crée",
+#         "insérer", "inserer", "insert", "insère", "insere",
+#         "ajouter", "ajoute", "add",
+#         "nouveau", "nouvelle", "new",
+#         "enregistrer", "enregistre", "save",
+#         "je veux créer", "je veux insérer", "je veux ajouter"
+#     ]
+#     if any(w in q for w in create_keywords):
+#         return "create"
+    
+#     # DELETE / REMOVE
+#     delete_keywords = [
+#         "supprimer", "supprime", "delete",
+#         "effacer", "efface", "remove",
+#         "retirer", "retire", "drop"
+#     ]
+#     if any(w in q for w in delete_keywords):
+#         return "delete"
+    
+#     # Types de données (priorité)
+#     if any(w in q for w in ["type des données", "types des données", "dtype", "schéma", "schema","type", "types"]):
+#         return "schema"
 
-    if any(w in q for w in ["somme", "sum", "addition"]):
-        return "sum"
+#     # Profil / description complète
+#     if any(w in q for w in ["information", "informations", "description", "résumé", "profil", "profilage"]):
+#         return "data_profile"
 
-    if any(w in q for w in ["maximum", "max", "plus élevé", "plus cher"]):
-        return "max"
+#     # Colonnes uniquement
+#     if any(w in q for w in ["colonnes", "champs", "attributs", "noms des colonnes"]):
+#         return "columns"
 
-    if any(w in q for w in ["minimum", "min", "moins cher", "plus bas"]):
-        return "min"
+#     # Vérifier les commandes Redis
+#     redis_cmd = extract_redis_command(question)
+#     if redis_cmd:
+#         return "convert_nosql"
+    
+#     # Vérifier si c'est une commande de base de données explicite
+#     db_language = detect_database_language(question)
+#     if db_language != 'unknown':
+#         return "convert_nosql"
+    
+#     # Mots-clés indiquant une demande d'explication
+#     explain_keywords = [
+#         "explique", "explain", "que fait", "qu'est-ce que fait", 
+#         "analyse", "analyze", "décris", "describe",
+#         "comment fonctionne", "signifie", "veut dire",
+#         "c'est quoi", "qu'est-ce que c'est", "que fait"
+#     ]
+    
+#     has_explain_keyword = any(keyword in q for keyword in explain_keywords)
+    
+#     if has_explain_keyword:
+#         return "convert_nosql"
 
-    # Sélection par défaut (READ)
-    return "select"
+#     # Groupement
+#     if any(w in q for w in ["grouper", "group by", "par catégorie", "par type", "par prix"]):
+#         return "group"
+
+#     # Agrégations
+#     if any(w in q for w in ["moyenne", "moyen", "average", "avg"]):
+#         return "avg"
+
+#     if any(w in q for w in ["combien", "nombre", "count", "total"]):
+#         return "count"
+
+#     if any(w in q for w in ["somme", "sum", "addition"]):
+#         return "sum"
+
+#     if any(w in q for w in ["maximum", "max", "plus élevé", "plus cher"]):
+#         return "max"
+
+#     if any(w in q for w in ["minimum", "min", "moins cher", "plus bas"]):
+#         return "min"
+
+#     # Sélection par défaut (READ)
+#     return "select"
 
 
 def extract_crud_params(question: str, operation: str) -> Dict[str, Any]:
@@ -1146,6 +1107,3 @@ DELETE WHERE {{
     return queries
 
 
-# Variables globales pour Gemini
-gemini_client = None
-gemini_available = False
