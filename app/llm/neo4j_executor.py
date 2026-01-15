@@ -1,5 +1,5 @@
 from py2neo import Graph
-from app.llm.llm_utils import detect_query_type
+from llm_utils import detect_query_type
 class Neo4jExecutor:
     def __init__(self, uri, user, password):
         self.graph = Graph(uri, auth=(user, password))

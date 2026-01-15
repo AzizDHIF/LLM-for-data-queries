@@ -1,0 +1,110 @@
+Natural language;generated_SPARQL;the correct sparql;generated execution;correct execution
+List all films.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?film
+WHERE {
+  ?film a ex:Film .
+}";SELECT ?film WHERE { ?film a ex:Film . }
+Show all film titles with their release year.;"PREFIX ex: <http://example.org/movies/>
+SELECT ?title ?year
+WHERE {
+    ?film a ex:Film .
+    ?film ex:title ?title .
+    ?film ex:year ?year .
+}";"SELECT ?title ?year WHERE { ?film a ex:Film ; ex:title ?title ; ex:year ?year . }"
+Which films were directed by Christopher Nolan?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?filmTitle
+WHERE {
+  ?director ex:name ""Christopher Nolan"" .
+  ?film ex:director ?director .
+  ?film ex:title ?filmTitle .
+}";"SELECT ?title WHERE { ?film ex:director ex:Christopher_Nolan ; ex:title ?title . }"
+Which films feature Leonardo DiCaprio?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?filmTitle
+WHERE {
+    ?film ex:actor ?actor .
+    ?actor ex:name ""Leonardo DiCaprio"" .
+    ?film ex:title ?filmTitle .
+}";"SELECT ?title WHERE { ?film ex:actor ex:Leonardo_DiCaprio ; ex:title ?title . }"
+List films produced by Emma Thomas.;"PREFIX ex: <http://example.org/movies/>
+SELECT ?filmTitle
+WHERE {
+  ?film ex:producer ?producer .
+  ?producer ex:name ""Emma Thomas"" .
+  ?film ex:title ?filmTitle .
+}";"SELECT ?title WHERE { ?film ex:producer ex:Emma_Thomas ; ex:title ?title . }"
+Which films were released after 2010?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title
+WHERE {
+  ?film rdf:type ex:Film .
+  ?film ex:title ?title .
+  ?film ex:year ?year .
+  FILTER(?year > 2010)
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:year ?year . FILTER(?year > 2010) }"
+Which films have a rating higher than 8.5?;"PREFIX ex: <http://example.org/movies/>
+SELECT ?title
+WHERE {
+    ?film a ex:Film ;
+          ex:title ?title ;
+          ex:rating ?rating .
+    FILTER(?rating > 8.5)
+}";"SELECT ?title ?rating WHERE { ?film ex:title ?title ; ex:rating ?rating . FILTER(?rating > 8.5) }"
+List all science fiction films.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title
+WHERE {
+  ?film a ex:Film ;
+        ex:title ?title ;
+        ex:hasGenre ?genre .
+  FILTER(?genre = ex:Science_Fiction)
+}";"SELECT ?title WHERE { ?film ex:hasGenre ex:ScienceFiction ; ex:title ?title . }"
+Which films belong to more than one genre?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title
+WHERE {
+  ?film a ex:Film .
+  ?film ex:title ?title .
+  ?film ex:hasGenre ?genre .
+}
+GROUP BY ?film ?title
+HAVING (COUNT(?genre) > 1)";"SELECT ?title (COUNT(?genre) AS ?nbGenres)
+        WHERE { ?film ex:title ?title ; ex:hasGenre ?genre . }
+        GROUP BY ?title
+        HAVING(COUNT(?genre) > 1)"
+Which films were directed and produced by the same person?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?title ?personName
+WHERE {
+  ?film a ex:Film .
+  ?film ex:director ?person .
+  ?film ex:producer ?person .
+  ?film ex:title ?title .
+  ?person ex:name ?personName .
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:director ?p ; ex:producer ?p . }"
+Which films were produced in the USA?;"PREFIX ex: <http://example.org/movies/>
+SELECT ?title
+WHERE {
+    ?film a ex:Film .
+    ?film ex:hasCountry ex:USA .
+    ?film ex:title ?title .
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:hasCountry ex:USA . }"
+Which films are longer than 150 minutes?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title
+WHERE {
+  ?film a ex:Film .
+  ?film ex:title ?title .
+  ?film ex:duration ?duration .
+  FILTER (?duration > 150)
+}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:duration ?d . FILTER(?d > 150) }"

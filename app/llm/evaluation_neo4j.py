@@ -8,7 +8,7 @@ import yaml
 import csv 
 from gemini_client import GeminiClient
 from schema_extractor import Neo4jSchemaExtractor
-
+from neo4j_executor import Neo4jExecutor
 
 # --- Charger les configs ---
 with open("config/neo4j.yaml") as f:
@@ -18,6 +18,11 @@ with open("config/gemini.yaml") as f:
     gemini_cfg = yaml.safe_load(f)
 
 # --- Initialiser Neo4j ---
+executor = Neo4jExecutor(
+    neo4j_cfg["uri"],
+    neo4j_cfg["user"],
+    neo4j_cfg["password"]
+)
 extractor = Neo4jSchemaExtractor(
     neo4j_cfg["uri"],
     neo4j_cfg["user"],
@@ -115,17 +120,20 @@ data= [
 
 with open("nl_neo4j_execution_dataset.csv", "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f, delimiter=";")
-    writer.writerow(["Natural language", "generated_neo4j","the correct neo4j"])
+    writer.writerow(["Natural language", "generated_neo4j","the correct neo4j","generated_execution","the correct execution"])
     for tuples in data:
       question=tuples[0]
       true_neo4j=tuples[1]
       neo4j = gemini_client.generate_cypher(question, schema)
-    
+      generated_execution=executor.run_query(neo4j)
+      correct_execution=executor.run_query(true_neo4j)
       
       writer.writerow([
          question,
          neo4j,
          true_neo4j,
+         generated_execution,
+         correct_execution
          
       ])
 

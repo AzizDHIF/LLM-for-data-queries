@@ -110,17 +110,20 @@ gemini_client = GeminiClient(gemini_cfg["api_key"])
 
 with open("nl_sparql_execution_dataset.csv", "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f, delimiter=";")
-    writer.writerow(["Natural language", "generated_SPARQL","the correct sparql"])
+    writer.writerow(["Natural language", "generated_SPARQL","the correct sparql","generated execution","correct execution"])
     for tuples in data:
       question=tuples[0]
       true_sparql=tuples[1]
       sparql = gemini_client.generate_rdf_no_execution(question, rdf_data.extract_ontology_from_fuseki())
-      execution=_display_user_friendly_results(rdf_data.run_sparql_query(sparql))
+      gen_execution=rdf_data.run_sparql_query(sparql)
+      #correct_execution=rdf_data.run_sparql_query(true_sparql)
       
       writer.writerow([
          question,
          sparql,
          true_sparql,
+         #gen_execution,
+         #correct_execution
          
       ])
 

@@ -12,6 +12,12 @@ from llm_utils import (
     parse_llm_output
 
 )
+import yaml
+
+from schema_extractor import Neo4jSchemaExtractor
+import sys
+import os
+
 class GeminiClient:
     """
     Wrapper pour le LLM Gemini : génère des requêtes Cypher à partir de NL.
@@ -64,6 +70,8 @@ class GeminiClient:
             return response.text
 
 
+
+
        
         
 
@@ -72,6 +80,33 @@ class GeminiClient:
 
 
 # --- Test rapide ---
+if __name__=="__main__":
+
+
+
+
+    # --- Charger les configs ---
+    with open("config/neo4j.yaml") as f:
+        neo4j_cfg = yaml.safe_load(f)
+
+    with open("config/gemini.yaml") as f:
+        gemini_cfg = yaml.safe_load(f)
+
+    # --- Initialiser Neo4j ---
+    extractor = Neo4jSchemaExtractor(
+        neo4j_cfg["uri"],
+        neo4j_cfg["user"],
+        neo4j_cfg["password"]
+    )
+    schema = extractor.extract_schema()
+    gemini_client = GeminiClient(api_key=gemini_cfg["api_key"], model=gemini_cfg["model"])
+    question="create a movie"
+    print(gemini_client.generate_cypher(question,schema))
+
+
+
+
+
 
 
 

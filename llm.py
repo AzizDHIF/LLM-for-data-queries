@@ -116,8 +116,8 @@ if __name__ == "__main__":
     # Remplace "YOUR_GEMINI_API_KEY" par ta vraie clé
     gemini_client = GeminiClient(gemini_cfg["api_key"])
 
-    nl_query = "List all films"
+    nl_query = "Show all film titles with their release year."
     sparql = gemini_client.generate_rdf(nl_query, rdf_data.extract_ontology_from_fuseki())
-
+    
     print("NL Query:", nl_query)
     print("Generated Sparql:", sparql)
