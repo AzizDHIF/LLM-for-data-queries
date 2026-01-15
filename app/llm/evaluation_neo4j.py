@@ -120,7 +120,7 @@ data= [
 
 with open("nl_neo4j_execution_dataset.csv", "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f, delimiter=";")
-    writer.writerow(["Natural language", "generated_neo4j","the correct neo4j","generated_execution","the correct execution"])
+    writer.writerow(["Natural language", "generated request","correct request","generated execution","correct execution"])
     for tuples in data:
       question=tuples[0]
       true_neo4j=tuples[1]

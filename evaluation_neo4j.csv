@@ -1,0 +1,21 @@
+Natural language;Metric_ExactMatch;Metric_QueryStagesMatch;Metric_QueryFieldsCoverage;Metric_ExecutionAccuracy;Metric_ExecutionFieldsMatch;Metric_ExecutionValueMatch
+List all movies.;0;1;1.0;1;0;0
+Find all people.;0;1;1.0;1;0;0
+Who acted in 'Inception'?;1;1;1.0;1;0;0
+Which movies were directed by Christopher Nolan?;1;1;1.0;1;0;0
+Who produced the movie 'Interstellar'?;1;1;1.0;1;0;0
+List movies released after 2010.;0;1;1.0;1;0;0
+Find movies written by 'Jonathan Nolan'.;0;1;1.0;1;0;0
+Who follows Leonardo DiCaprio?;0;1;1.0;1;0;0
+Which movies has 'Leonardo DiCaprio' acted in?;0;1;1.0;1;0;0
+Find movies reviewed by 'Alice'.;0;1;1.0;1;0;0
+Who directed and wrote 'Memento'?;1;1;1.0;1;0;0
+List movies produced by 'Emma Thomas'.;0;1;1.0;1;0;0
+Which movies did 'Christian Bale' act in after 2005?;0;1;1.0;1;0;0
+Find all actors in movies directed by 'Christopher Nolan'.;0;1;1.0;1;0;0
+Who follows people that acted in 'Inception'?;0;1;1.0;1;0;0
+List all movies reviewed after 2015.;0;1;1.0;1;0;0
+Find movies acted by both 'Leonardo DiCaprio' and 'Joseph Gordon-Levitt'.;0;1;1.0;1;0;0
+Who produced movies written by 'Jonathan Nolan'?;0;1;1.0;1;0;0
+Find all people who both acted and wrote a movie.;0;1;1.0;1;0;0
+List movies released between 2000 and 2010.;0;1;1.0;1;0;0

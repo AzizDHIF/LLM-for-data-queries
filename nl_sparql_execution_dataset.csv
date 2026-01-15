@@ -1,110 +1,345 @@
-Natural language;generated_SPARQL;the correct sparql;generated execution;correct execution
-List all films.;"PREFIX ex: <http://example.org/movies/>
+Natural language;generated request;correct request;generated execution;correct execution
+How many films are in the database?;"PREFIX ex: <http://example.org/movies/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
-SELECT ?film
+SELECT (COUNT(?film) AS ?filmCount)
 WHERE {
-  ?film a ex:Film .
-}";SELECT ?film WHERE { ?film a ex:Film . }
-Show all film titles with their release year.;"PREFIX ex: <http://example.org/movies/>
-SELECT ?title ?year
-WHERE {
-    ?film a ex:Film .
-    ?film ex:title ?title .
-    ?film ex:year ?year .
-}";"SELECT ?title ?year WHERE { ?film a ex:Film ; ex:title ?title ; ex:year ?year . }"
-Which films were directed by Christopher Nolan?;"PREFIX ex: <http://example.org/movies/>
+  ?film rdf:type ex:Film .
+}";"
+PREFIX ex: <http://example.org/movies/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
-SELECT ?filmTitle
+SELECT (COUNT(?film) AS ?count)
 WHERE {
-  ?director ex:name ""Christopher Nolan"" .
-  ?film ex:director ?director .
-  ?film ex:title ?filmTitle .
-}";"SELECT ?title WHERE { ?film ex:director ex:Christopher_Nolan ; ex:title ?title . }"
-Which films feature Leonardo DiCaprio?;"PREFIX ex: <http://example.org/movies/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-
-SELECT ?filmTitle
-WHERE {
-    ?film ex:actor ?actor .
-    ?actor ex:name ""Leonardo DiCaprio"" .
-    ?film ex:title ?filmTitle .
-}";"SELECT ?title WHERE { ?film ex:actor ex:Leonardo_DiCaprio ; ex:title ?title . }"
-List films produced by Emma Thomas.;"PREFIX ex: <http://example.org/movies/>
-SELECT ?filmTitle
-WHERE {
-  ?film ex:producer ?producer .
-  ?producer ex:name ""Emma Thomas"" .
-  ?film ex:title ?filmTitle .
-}";"SELECT ?title WHERE { ?film ex:producer ex:Emma_Thomas ; ex:title ?title . }"
-Which films were released after 2010?;"PREFIX ex: <http://example.org/movies/>
+  ?film rdf:type ex:Film .
+}
+";{'head': {'vars': ['filmCount']}, 'results': {'bindings': [{'filmCount': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '4'}}]}};{'head': {'vars': ['count']}, 'results': {'bindings': [{'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '4'}}]}}
+List all film titles.;"PREFIX ex: <http://example.org/movies/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 SELECT ?title
 WHERE {
   ?film rdf:type ex:Film .
   ?film ex:title ?title .
-  ?film ex:year ?year .
-  FILTER(?year > 2010)
-}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:year ?year . FILTER(?year > 2010) }"
-Which films have a rating higher than 8.5?;"PREFIX ex: <http://example.org/movies/>
-SELECT ?title
-WHERE {
-    ?film a ex:Film ;
-          ex:title ?title ;
-          ex:rating ?rating .
-    FILTER(?rating > 8.5)
-}";"SELECT ?title ?rating WHERE { ?film ex:title ?title ; ex:rating ?rating . FILTER(?rating > 8.5) }"
-List all science fiction films.;"PREFIX ex: <http://example.org/movies/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+}";"
+PREFIX ex: <http://example.org/movies/>
 
 SELECT ?title
 WHERE {
-  ?film a ex:Film ;
-        ex:title ?title ;
-        ex:hasGenre ?genre .
-  FILTER(?genre = ex:Science_Fiction)
-}";"SELECT ?title WHERE { ?film ex:hasGenre ex:ScienceFiction ; ex:title ?title . }"
-Which films belong to more than one genre?;"PREFIX ex: <http://example.org/movies/>
+  ?film ex:title ?title .
+}
+";{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}}, {'title': {'type': 'literal', 'value': 'Titanic'}}]}};{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}}, {'title': {'type': 'literal', 'value': 'Titanic'}}]}}
+List all films with their release year.;"PREFIX ex: <http://example.org/movies/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?title ?year
+WHERE {
+  ?film a ex:Film .
+  ?film ex:title ?title .
+  ?film ex:year ?year .
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title ?year
+WHERE {
+  ?film ex:title ?title ;
+        ex:year ?year .
+}
+";{'head': {'vars': ['title', 'year']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}, 'year': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2010'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}, 'year': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2014'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}, 'year': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2008'}}, {'title': {'type': 'literal', 'value': 'Titanic'}, 'year': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '1997'}}]}};{'head': {'vars': ['title', 'year']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}, 'year': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2010'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}, 'year': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2014'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}, 'year': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2008'}}, {'title': {'type': 'literal', 'value': 'Titanic'}, 'year': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '1997'}}]}}
+How many actors are there?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT (COUNT(DISTINCT ?actor) AS ?count)
+WHERE {
+  ?film ex:actor ?actor .
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT (COUNT(DISTINCT ?actor) AS ?count)
+WHERE {
+  ?film ex:actor ?actor .
+}
+";{'head': {'vars': ['count']}, 'results': {'bindings': [{'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '4'}}]}};{'head': {'vars': ['count']}, 'results': {'bindings': [{'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '4'}}]}}
+List all directors.;"PREFIX ex: <http://example.org/movies/>
+SELECT DISTINCT ?directorName
+WHERE {
+  ?film ex:director ?director .
+  ?director ex:name ?directorName .
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT DISTINCT ?name
+WHERE {
+  ?film ex:director ?p .
+  ?p ex:name ?name .
+}
+";{'head': {'vars': ['directorName']}, 'results': {'bindings': [{'directorName': {'type': 'literal', 'value': 'Christopher Nolan'}}, {'directorName': {'type': 'literal', 'value': 'James Cameron'}}]}};{'head': {'vars': ['name']}, 'results': {'bindings': [{'name': {'type': 'literal', 'value': 'Christopher Nolan'}}, {'name': {'type': 'literal', 'value': 'James Cameron'}}]}}
+List all films released after 2010.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT ?title
+WHERE {
+    ?film rdf:type ex:Film .
+    ?film ex:title ?title .
+    ?film ex:year ?year .
+    FILTER(?year > 2010)
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title
+WHERE {
+  ?film ex:title ?title ;
+        ex:year ?year .
+  FILTER(?year > 2010)
+}
+";{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Interstellar'}}]}};{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Interstellar'}}]}}
+List all films longer than 150 minutes.;"PREFIX ex: <http://example.org/movies/>
 
 SELECT ?title
 WHERE {
   ?film a ex:Film .
+  ?film ex:duration ?duration .
   ?film ex:title ?title .
-  ?film ex:hasGenre ?genre .
-}
-GROUP BY ?film ?title
-HAVING (COUNT(?genre) > 1)";"SELECT ?title (COUNT(?genre) AS ?nbGenres)
-        WHERE { ?film ex:title ?title ; ex:hasGenre ?genre . }
-        GROUP BY ?title
-        HAVING(COUNT(?genre) > 1)"
-Which films were directed and produced by the same person?;"PREFIX ex: <http://example.org/movies/>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+  FILTER(?duration > 150)
+}";"
+PREFIX ex: <http://example.org/movies/>
 
-SELECT ?title ?personName
+SELECT ?title
+WHERE {
+  ?film ex:title ?title ;
+        ex:duration ?d .
+  FILTER(?d > 150)
+}
+";{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Interstellar'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}}, {'title': {'type': 'literal', 'value': 'Titanic'}}]}};{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Interstellar'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}}, {'title': {'type': 'literal', 'value': 'Titanic'}}]}}
+How many films have a rating higher than 8.5?;"PREFIX ex: <http://example.org/movies/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT (COUNT(?film) AS ?count)
+WHERE {
+  ?film a ex:Film ;
+        ex:rating ?rating .
+  FILTER(?rating > 8.5)
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT (COUNT(?film) AS ?count)
+WHERE {
+  ?film ex:rating ?rating .
+  FILTER(?rating > 8.5)
+}
+";{'head': {'vars': ['count']}, 'results': {'bindings': [{'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '3'}}]}};{'head': {'vars': ['count']}, 'results': {'bindings': [{'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '3'}}]}}
+List all films and their genres.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?filmTitle ?genre
+WHERE {
+  ?film rdf:type ex:Film .
+  ?film ex:title ?filmTitle .
+  ?film ex:hasGenre ?genre .
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title ?genre
+WHERE {
+  ?film ex:title ?title ;
+        ex:hasGenre ?genre .
+}
+";{'head': {'vars': ['filmTitle', 'genre']}, 'results': {'bindings': [{'filmTitle': {'type': 'literal', 'value': 'Inception'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/ScienceFiction'}}, {'filmTitle': {'type': 'literal', 'value': 'Interstellar'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/ScienceFiction'}}, {'filmTitle': {'type': 'literal', 'value': 'Interstellar'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Drama'}}, {'filmTitle': {'type': 'literal', 'value': 'The Dark Knight'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Action'}}, {'filmTitle': {'type': 'literal', 'value': 'The Dark Knight'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Crime'}}, {'filmTitle': {'type': 'literal', 'value': 'Titanic'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Drama'}}, {'filmTitle': {'type': 'literal', 'value': 'Titanic'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Romance'}}]}};{'head': {'vars': ['title', 'genre']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/ScienceFiction'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/ScienceFiction'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Drama'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Action'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Crime'}}, {'title': {'type': 'literal', 'value': 'Titanic'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Drama'}}, {'title': {'type': 'literal', 'value': 'Titanic'}, 'genre': {'type': 'uri', 'value': 'http://example.org/movies/Romance'}}]}}
+List all films and their production countries.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?filmTitle ?country
+WHERE {
+  ?film rdf:type ex:Film .
+  ?film ex:title ?filmTitle .
+  ?film ex:hasCountry ?country .
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title ?country
+WHERE {
+  ?film ex:title ?title ;
+        ex:hasCountry ?country .
+}
+";{'head': {'vars': ['filmTitle', 'country']}, 'results': {'bindings': [{'filmTitle': {'type': 'literal', 'value': 'Inception'}, 'country': {'type': 'uri', 'value': 'http://example.org/movies/USA'}}, {'filmTitle': {'type': 'literal', 'value': 'Interstellar'}, 'country': {'type': 'uri', 'value': 'http://example.org/movies/USA'}}, {'filmTitle': {'type': 'literal', 'value': 'The Dark Knight'}, 'country': {'type': 'uri', 'value': 'http://example.org/movies/USA'}}, {'filmTitle': {'type': 'literal', 'value': 'Titanic'}, 'country': {'type': 'uri', 'value': 'http://example.org/movies/USA'}}]}};{'head': {'vars': ['title', 'country']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}, 'country': {'type': 'uri', 'value': 'http://example.org/movies/USA'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}, 'country': {'type': 'uri', 'value': 'http://example.org/movies/USA'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}, 'country': {'type': 'uri', 'value': 'http://example.org/movies/USA'}}, {'title': {'type': 'literal', 'value': 'Titanic'}, 'country': {'type': 'uri', 'value': 'http://example.org/movies/USA'}}]}}
+Which films were directed and produced by the same person?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?filmTitle ?personName
 WHERE {
   ?film a ex:Film .
   ?film ex:director ?person .
   ?film ex:producer ?person .
-  ?film ex:title ?title .
+  ?film ex:title ?filmTitle .
   ?person ex:name ?personName .
-}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:director ?p ; ex:producer ?p . }"
-Which films were produced in the USA?;"PREFIX ex: <http://example.org/movies/>
+}";"
+PREFIX ex: <http://example.org/movies/>
+
 SELECT ?title
 WHERE {
-    ?film a ex:Film .
-    ?film ex:hasCountry ex:USA .
-    ?film ex:title ?title .
-}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:hasCountry ex:USA . }"
-Which films are longer than 150 minutes?;"PREFIX ex: <http://example.org/movies/>
+  ?film ex:title ?title ;
+        ex:director ?p ;
+        ex:producer ?p .
+}
+";{'head': {'vars': ['filmTitle', 'personName']}, 'results': {'bindings': [{'filmTitle': {'type': 'literal', 'value': 'Titanic'}, 'personName': {'type': 'literal', 'value': 'James Cameron'}}]}};{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Titanic'}}]}}
+Which actors appeared in more than one film?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?actorName
+WHERE {
+  ?film ex:actor ?actor .
+  ?actor ex:name ?actorName .
+}
+GROUP BY ?actorName
+HAVING (COUNT(DISTINCT ?film) > 1)";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?actor (COUNT(?film) AS ?count)
+WHERE {
+  ?film ex:actor ?actor .
+}
+GROUP BY ?actor
+HAVING(COUNT(?film) > 1)
+";{'head': {'vars': ['actorName']}, 'results': {'bindings': [{'actorName': {'type': 'literal', 'value': 'Leonardo DiCaprio'}}]}};{'head': {'vars': ['actor', 'count']}, 'results': {'bindings': [{'actor': {'type': 'uri', 'value': 'http://example.org/movies/Leonardo_DiCaprio'}, 'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2'}}]}}
+What is the average rating of all films?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT (AVG(?rating) AS ?averageRating)
+WHERE {
+  ?film a ex:Film .
+  ?film ex:rating ?rating .
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT (AVG(?rating) AS ?avgRating)
+WHERE {
+  ?film ex:rating ?rating .
+}
+";{'head': {'vars': ['averageRating']}, 'results': {'bindings': [{'averageRating': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#decimal', 'value': '8.575'}}]}};{'head': {'vars': ['avgRating']}, 'results': {'bindings': [{'avgRating': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#decimal', 'value': '8.575'}}]}}
+What is the average film duration?;"PREFIX ex: <http://example.org/movies/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT (AVG(?duration) AS ?averageDuration)
+WHERE {
+  ?film a ex:Film .
+  ?film ex:duration ?duration .
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT (AVG(?d) AS ?avgDuration)
+WHERE {
+  ?film ex:duration ?d .
+}
+";{'head': {'vars': ['averageDuration']}, 'results': {'bindings': [{'averageDuration': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#decimal', 'value': '166.0'}}]}};{'head': {'vars': ['avgDuration']}, 'results': {'bindings': [{'avgDuration': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#decimal', 'value': '166.0'}}]}}
+List all people born before 1970.;"PREFIX ex: <http://example.org/movies/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?person ?name
+WHERE {
+  ?person a ex:Person .
+  ?person ex:birthYear ?year .
+  ?person ex:name ?name .
+  FILTER (?year < 1970)
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?name
+WHERE {
+  ?p ex:name ?name ;
+     ex:birthYear ?year .
+  FILTER(?year < 1970)
+}
+";{'head': {'vars': ['person', 'name']}, 'results': {'bindings': [{'person': {'type': 'uri', 'value': 'http://example.org/movies/Matthew_McConaughey'}, 'name': {'type': 'literal', 'value': 'Matthew McConaughey'}}, {'person': {'type': 'uri', 'value': 'http://example.org/movies/James_Cameron'}, 'name': {'type': 'literal', 'value': 'James Cameron'}}]}};{'head': {'vars': ['name']}, 'results': {'bindings': [{'name': {'type': 'literal', 'value': 'Matthew McConaughey'}}, {'name': {'type': 'literal', 'value': 'James Cameron'}}]}}
+Which films feature an actor named Leonardo DiCaprio?;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?filmTitle
+WHERE {
+  ?film ex:actor ?actor .
+  ?actor ex:name ""Leonardo DiCaprio"" .
+  ?film ex:title ?filmTitle .
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title
+WHERE {
+  ?film ex:title ?title ;
+        ex:actor ?p .
+  ?p ex:name ""Leonardo DiCaprio"" .
+}
+";{'head': {'vars': ['filmTitle']}, 'results': {'bindings': [{'filmTitle': {'type': 'literal', 'value': 'Inception'}}, {'filmTitle': {'type': 'literal', 'value': 'Titanic'}}]}};{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}}, {'title': {'type': 'literal', 'value': 'Titanic'}}]}}
+Which films were directed by someone born after 1960?;"PREFIX ex: <http://example.org/movies/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?title
+WHERE {
+  ?film ex:director ?director .
+  ?film ex:title ?title .
+  ?director ex:birthYear ?birthYear .
+  FILTER (?birthYear > 1960)
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title
+WHERE {
+  ?film ex:title ?title ;
+        ex:director ?d .
+  ?d ex:birthYear ?year .
+  FILTER(?year > 1960)
+}
+";{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}}]}};{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}}]}}
+List all genres with the number of films per genre.;"PREFIX ex: <http://example.org/movies/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?genre (COUNT(?film) AS ?numberOfFilms)
+WHERE {
+  ?film ex:hasGenre ?genre .
+}
+GROUP BY ?genre";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?genre (COUNT(?film) AS ?count)
+WHERE {
+  ?film ex:hasGenre ?genre .
+}
+GROUP BY ?genre
+";{'head': {'vars': ['genre', 'numberOfFilms']}, 'results': {'bindings': [{'genre': {'type': 'uri', 'value': 'http://example.org/movies/Action'}, 'numberOfFilms': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '1'}}, {'genre': {'type': 'uri', 'value': 'http://example.org/movies/Drama'}, 'numberOfFilms': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2'}}, {'genre': {'type': 'uri', 'value': 'http://example.org/movies/Crime'}, 'numberOfFilms': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '1'}}, {'genre': {'type': 'uri', 'value': 'http://example.org/movies/Romance'}, 'numberOfFilms': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '1'}}, {'genre': {'type': 'uri', 'value': 'http://example.org/movies/ScienceFiction'}, 'numberOfFilms': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2'}}]}};{'head': {'vars': ['genre', 'count']}, 'results': {'bindings': [{'genre': {'type': 'uri', 'value': 'http://example.org/movies/Action'}, 'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '1'}}, {'genre': {'type': 'uri', 'value': 'http://example.org/movies/Drama'}, 'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2'}}, {'genre': {'type': 'uri', 'value': 'http://example.org/movies/Crime'}, 'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '1'}}, {'genre': {'type': 'uri', 'value': 'http://example.org/movies/Romance'}, 'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '1'}}, {'genre': {'type': 'uri', 'value': 'http://example.org/movies/ScienceFiction'}, 'count': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#integer', 'value': '2'}}]}}
+What is the highest rated film?;"PREFIX ex: <http://example.org/movies/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 SELECT ?title
 WHERE {
   ?film a ex:Film .
+  ?film ex:rating ?rating .
   ?film ex:title ?title .
-  ?film ex:duration ?duration .
-  FILTER (?duration > 150)
-}";"SELECT ?title WHERE { ?film ex:title ?title ; ex:duration ?d . FILTER(?d > 150) }"
+}
+ORDER BY DESC(?rating)
+LIMIT 1";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title ?rating
+WHERE {
+  ?film ex:title ?title ;
+        ex:rating ?rating .
+}
+ORDER BY DESC(?rating)
+LIMIT 1
+";{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'The Dark Knight'}}]}};{'head': {'vars': ['title', 'rating']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'The Dark Knight'}, 'rating': {'type': 'literal', 'datatype': 'http://www.w3.org/2001/XMLSchema#decimal', 'value': '9.0'}}]}}
+List films released between 2000 and 2015.;"PREFIX ex: <http://example.org/movies/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?title
+WHERE {
+  ?film a ex:Film .
+  ?film ex:title ?title .
+  ?film ex:year ?year .
+  FILTER (?year >= 2000 && ?year <= 2015)
+}";"
+PREFIX ex: <http://example.org/movies/>
+
+SELECT ?title
+WHERE {
+  ?film ex:title ?title ;
+        ex:year ?year .
+  FILTER(?year >= 2000 && ?year <= 2015)
+}
+";{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}}]}};{'head': {'vars': ['title']}, 'results': {'bindings': [{'title': {'type': 'literal', 'value': 'Inception'}}, {'title': {'type': 'literal', 'value': 'Interstellar'}}, {'title': {'type': 'literal', 'value': 'The Dark Knight'}}]}}

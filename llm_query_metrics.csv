@@ -1,0 +1,21 @@
+Natural language,Metric_ExactMatch,Metric_QueryStagesMatch,Metric_QueryFieldsCoverage,Metric_ExecutionAccuracy,Metric_ExecutionFieldsMatch,Metric_ExecutionValueMatch
+How many films are in the database?,0,1,1.0,1,0,0
+List all film titles.,0,1,1.0,1,0,0
+List all films with their release year.,0,1,1.0,1,0,0
+How many actors are there?,0,1,1.0,1,0,0
+List all directors.,0,1,1.0,1,0,0
+List all films released after 2010.,0,1,1.0,1,0,0
+List all films longer than 150 minutes.,0,1,1.0,1,0,0
+How many films have a rating higher than 8.5?,0,1,1.0,1,0,0
+List all films and their genres.,0,1,1.0,1,0,0
+List all films and their production countries.,0,1,1.0,1,0,0
+Which films were directed and produced by the same person?,0,1,1.0,1,0,0
+Which actors appeared in more than one film?,0,1,1.0,1,0,0
+What is the average rating of all films?,0,1,1.0,1,0,0
+What is the average film duration?,0,1,1.0,1,0,0
+List all people born before 1970.,0,1,1.0,1,0,0
+Which films feature an actor named Leonardo DiCaprio?,0,1,1.0,1,0,0
+Which films were directed by someone born after 1960?,0,1,1.0,1,0,0
+List all genres with the number of films per genre.,0,1,1.0,1,0,0
+What is the highest rated film?,0,1,1.0,1,0,0
+List films released between 2000 and 2015.,0,1,1.0,1,0,0
