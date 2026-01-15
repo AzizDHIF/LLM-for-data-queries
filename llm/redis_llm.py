@@ -94,6 +94,15 @@ For searching:
 
 5. Use HSET for new entries, DEL to remove, HGETALL to get all fields from HASHes, and FT.SEARCH for filtering.
 6. CRITICAL: Return ONLY the JSON object, nothing else.
+7. IMPORTANT:
+To count users, movies, or actors:
+- NEVER use GET user:count
+- Instead, assume counting keys matching pattern (user:*)
+- Return:
+{
+  "command": "COUNT_KEYS",
+  "pattern": "user:*"
+}
 """
 
 
@@ -132,8 +141,9 @@ def generate_redis_command(user_request: str) -> dict:
 
 def execute_redis_command(cmd: dict):
     command = cmd["command"].upper()
-
-    if command == "HGETALL":
+    if command == "COUNT_KEYS":
+        return {"count": len(r.keys(cmd["pattern"]))}
+    elif command == "HGETALL":
         return r.hgetall(cmd["key_or_index"])
     elif command == "GET":
         return r.get(cmd["key_or_index"])

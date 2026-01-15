@@ -14,7 +14,7 @@ from llm.redis_llm import generate_redis_command, execute_redis_command, normali
 from executers.hbase_executer import HBaseExecutor
 from app_all import *
 from app_all import MultiDBManager
-from llm.classifier_old import detect_database_language, detect_query_type, analyze_query
+from llm.classifier_old import detect_database_language, analyze_query, detect_query_type1
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "secret-key-123")
 
@@ -120,12 +120,14 @@ def index():
 
         if question:
             normalized_question = preprocess_question(question)
+            print("normalized question", normalized_question)
             session['conversation'][selected_db].append({'role': 'user', 'text': question})
-            detect_type= detect_query_type(normalized_question)
-            if detect_type =="convert_nosql":
-                selected_db = detect_database_language(normalized_question)
-                results=analyze_query(normalized_question)
-                print(results)
+            # detect_type= detect_query_type1(normalized_question)
+            # print("datected type", detect_type)
+            # if detect_type =="convert_nosql":
+            #     selected_db = detect_database_language(normalized_question)
+            #     results=analyze_query(normalized_question)
+            #     print(results)
             
 
             try:

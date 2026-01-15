@@ -298,6 +298,72 @@ def detect_database_language(query: str) -> str:
 # ============================================================================
 # EXPLICATION VIA LLM (AVEC GEMINI)
 # ============================================================================
+def init_gemini_client():
+    """Initialise le client Gemini avec la nouvelle API google.genai"""
+    global gemini_client, gemini_available
+    
+    try:
+        from google.genai import Client
+        
+        # Charger la configuration
+        config = load_gemini_config()
+        API_KEY = config.get("api_key")
+        MODEL = config.get("model", "gemini-2.5-pro")
+        
+        if not API_KEY:
+            print("⚠️ API_KEY Gemini non configurée ou invalide")
+            gemini_client = None
+            gemini_available = False
+            return gemini_client, gemini_available
+        
+        # Créer le client avec la nouvelle API
+        gemini_client = Client(api_key=API_KEY)
+        
+        print(f"✅ Client Gemini (nouvelle API) initialisé (modèle: {MODEL})")
+        gemini_available = True
+        
+    except ImportError:
+        # Fallback à l'ancienne API
+        try:
+            import google.generativeai as genai
+            
+            config = load_gemini_config()
+            API_KEY = "AIzaSyBpUHVjdEne7ul7SGONlWQeRtRAs84M8QM"
+            
+            if not API_KEY:
+                print("⚠️ API_KEY Gemini non configurée")
+                gemini_client = None
+                gemini_available = False
+                return gemini_client, gemini_available
+            
+            # Configurer avec l'ancienne API
+            genai.configure(api_key=API_KEY)
+            
+            # Créer le modèle
+            gemini_client = genai.GenerativeModel(
+                model_name=MODEL,
+                generation_config={
+                    "temperature": 0.2,
+                    "top_p": 0.95,
+                    "top_k": 40,
+                    "max_output_tokens": 1500,
+                }
+            )
+            
+            print(f"✅ Client Gemini (ancienne API) initialisé (modèle: {MODEL})")
+            gemini_available = True
+            
+        except Exception as e:
+            print(f"❌ Erreur lors de l'initialisation de Gemini: {e}")
+            gemini_client = None
+            gemini_available = False
+    
+    except Exception as e:
+        print(f"❌ Erreur client Gemini : {e}")
+        gemini_client = None
+        gemini_available = False
+    
+    return gemini_client, gemini_available
 
 def explain_query_with_llm(query: str, db_language: str) -> Dict[str, Any]:
     """
@@ -305,16 +371,26 @@ def explain_query_with_llm(query: str, db_language: str) -> Dict[str, Any]:
     """
     global gemini_client, gemini_available
     
-    from google.genai import Client
+    # Charger la configuration
     config = load_gemini_config()
-    API_KEY = config["api_key"]
-    MODEL = config.get("model", "gemini-2.5-pro")
-    client = Client(api_key=API_KEY)
+    API_KEY = "AIzaSyBpUHVjdEne7ul7SGONlWQeRtRAs84M8QM"
     
+    # Vérifier que la clé API est valide
+    if not API_KEY:
+        print("❌ ERREUR: Clé API Gemini manquante dans la configuration")
+        return {
+            'error': 'Clé API manquante',
+            'message': 'Veuillez configurer l\'API Gemini'
+        }
+    
+    # Initialiser Gemini si nécessaire
     if not gemini_available:
+        gemini_client, gemini_available = init_gemini_client()
+    
+    if not gemini_available or gemini_client is None:
         return {
             'error': 'Gemini non disponible',
-            'message': 'Veuillez configurer correctement l\'API Gemini'
+            'message': 'Le service d\'explication n\'est pas accessible'
         }
     
     # Contexte spécifique selon le langage
@@ -381,30 +457,40 @@ Ne retourne rien d'autre que le JSON.
 """
     
     try:
-        # Utiliser Gemini au lieu de Groq
-        response = client.models.generate_content(prompt)
+        print(f"📤 Envoi de la requête à Gemini ({db_language})...")
         
-        if not response or not response.text:
+        # Utiliser le client Gemini global
+        response = gemini_client.generate_content(prompt)
+        
+        if not response:
             raise Exception("Réponse vide de Gemini")
         
+        if not response.text:
+            print(f"⚠️ Réponse sans texte: {response}")
+            raise Exception("Réponse sans contenu texte")
+        
         explanation_str = response.text.strip()
+        print(f"📥 Réponse reçue ({len(explanation_str)} caractères)")
         
         # Nettoyer la réponse (retirer les backticks de code si présents)
         explanation_str = explanation_str.replace('```json', '').replace('```', '').strip()
         
         # Parser le JSON
         explanation = json.loads(explanation_str)
+        print("✅ Explication parsée avec succès")
         return explanation
         
     except json.JSONDecodeError as e:
         print(f"❌ Erreur de parsing JSON: {e}")
-        print(f"Réponse brute: {explanation_str[:500]}")
+        print(f"Réponse brute (premiers 500 caractères): {explanation_str[:500]}")
         return {
             'error': 'Parsing JSON échoué',
             'raw_response': explanation_str[:500] if 'explanation_str' in locals() else 'Pas de réponse'
         }
     except Exception as e:
         print(f"❌ Erreur Gemini: {e}")
+        import traceback
+        traceback.print_exc()
         return {'error': str(e)}
 
 
@@ -671,7 +757,7 @@ def validate_crud_data(operation: str, params: Dict[str, Any]) -> Tuple[bool, st
 
 # Ajouter dans classifier.py
 
-def detect_query_type(question: str) -> str:
+def detect_query_type1(question: str) -> str:
     """
     Détecte le type de requête en langage naturel
     CORRECTION : Amélioré pour détecter les combinaisons complexes
