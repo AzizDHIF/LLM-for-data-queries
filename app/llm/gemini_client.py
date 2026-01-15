@@ -59,6 +59,8 @@ class GeminiClient:
             contents=prompt,
             
             )
+
+
             return response.text
 
 
@@ -71,17 +73,9 @@ class GeminiClient:
 
 # --- Test rapide ---
 if __name__ == "__main__":
-    from app.schema.schema_extractor import Neo4jSchemaExtractor
 
-    # Config minimale pour test local
-    extractor = Neo4jSchemaExtractor("bolt://localhost:7687", "neo4j", "password")
-    schema = extractor.extract_schema()
 
-    # Remplace "YOUR_GEMINI_API_KEY" par ta vraie clé
-    gemini_client = GeminiClient(api_key="YOUR_GEMINI_API_KEY")
 
-    nl_query = "Find all movies released after 2000"
-    cypher = gemini_client.generate_cypher(nl_query, schema)
 
-    print("NL Query:", nl_query)
-    print("Generated Cypher:", cypher)
+    
+

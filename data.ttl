@@ -1,0 +1,12 @@
+@prefix ex: <http://example.org/movies/> .
+
+ex:Inception a ex:Film ;
+    ex:title "Inception" ;
+    ex:year 2010 ;
+    ex:actor ex:Leonardo_DiCaprio ;
+    ex:director ex:Christopher_Nolan ;
+    ex:producer ex:Emma_Thomas .
+
+ex:Leonardo_DiCaprio a ex:Person .
+ex:Christopher_Nolan a ex:Person .
+ex:Emma_Thomas a ex:Person .
