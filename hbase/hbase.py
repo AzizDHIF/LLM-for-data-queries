@@ -5,7 +5,7 @@ from google import genai
 
 HBASE_HOST = "localhost"
 HBASE_PORT = 9090
-GEMINI_API_KEY = "AIzaSyCb1e6COHxCNrL8PorQMq2QFrx8--TXrb8"
+GEMINI_API_KEY = "key"
 TABLE_NAME = "movies"
 
 connection = happybase.Connection(HBASE_HOST, HBASE_PORT)
