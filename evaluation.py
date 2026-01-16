@@ -125,6 +125,30 @@ def compute_metrics_csv(
 
     return result_df
 
+import pandas as pd
+
+def moyenne_par_colonne(input_csv):
+    """
+    Calcule la moyenne de chaque colonne numérique d'un DataFrame.
+
+    Args:
+        df (pd.DataFrame): Le DataFrame dont on veut calculer les moyennes.
+
+    Returns:
+        pd.Series: Moyenne de chaque colonne.
+    """
+    df = pd.read_csv(
+        input_csv,
+        sep=";",        # ✅ séparateur correct
+        engine="python",
+        nrows=20        # ✅ 20 requêtes uniquement
+    )
+    return df.mean(numeric_only=True)  # ignore les colonnes non numériques
+
+
+
+
+
 # -------------------------------------------------
 # Example usage
 # -------------------------------------------------
@@ -134,8 +158,14 @@ if __name__ == "__main__":
         input_csv="nl_sparql_execution_dataset.csv",
         output_csv="evaluation_sparql.csv"
     )
+    print("moyenne des métriques pour sparql: \n")
+
+    print(moyenne_par_colonne("evaluation_sparql.csv"))
 
     compute_metrics_csv(
         input_csv="nl_neo4j_execution_dataset.csv",
         output_csv="evaluation_neo4j.csv"
     )
+    print("\n")
+    print("moyenne des métriques pour neo4j: \n")
+    print(moyenne_par_colonne("evaluation_neo4j.csv"))
