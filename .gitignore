@@ -1,2 +1,12 @@
+# Ignorer l'environnement virtuel
 .venv/
+
+# Ignorer tous les fichiers YAML
 *.yaml
+
+# Ignorer tout le dossier config et son contenu
+config/
+
+# Optionnel : ignorer tous les fichiers de données CSV ou logs
+data/*.csv
+*.log
