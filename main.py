@@ -4,7 +4,7 @@ import redis
 
 
 
-client = genai.Client(api_key="AIzaSyD_KvgGKbHa1E26GO62VjUuXLWoT6GnQ7k")
+client = genai.Client(api_key="key")
 
 # Connect to Redis Stack (RediSearch enabled)
 r = redis.Redis(host="localhost", port=6379, decode_responses=True)
