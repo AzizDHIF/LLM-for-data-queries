@@ -580,7 +580,8 @@
 }
 
 .json-box {
-    height: 100%;
+    height: 300px;             /* taille fixe verticale */
+    width: 100%;               /* ou fixe si tu veux, ex: 600px */
     padding: 16px;
     margin: 0;
 
@@ -589,12 +590,15 @@
     line-height: 1.5;
     color: #e5e7eb;
 
-    overflow-x: auto;           /* 👉 scroll horizontal */
-    overflow-y: auto;           /* 👉 scroll vertical */
-    white-space: pre;           /* garde le JSON intact */
+    overflow-x: auto;          /* scroll horizontal si trop large */
+    overflow-y: auto;          /* scroll vertical si trop haut */
+    white-space: pre;          /* garde le JSON formaté */
 
     box-sizing: border-box;
+    border: 1px solid #555;   /* optionnel, pour mieux visualiser le cadre */
+    border-radius: 4px;       /* optionnel, un petit arrondi */
 }
+
 
     </style>
   </head>
@@ -620,20 +624,32 @@
             <h3>💡 Exemples de requêtes :</h3>
             <div class="example-queries">
               <span class="example-tag" onclick="fillQuery(this.textContent)">
-                Combien de produits avec rating > 4 ?
+                Give me the number of movies
+              </span>
+               <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Give the number of movies grouped by year 
               </span>
               <span class="example-tag" onclick="fillQuery(this.textContent)">
-                Prix moyen des câbles
+                Give me the movie number 5
               </span>
               <span class="example-tag" onclick="fillQuery(this.textContent)">
-                Nombre de produits par catégorie
+                Create one movie 
               </span>
               <span class="example-tag" onclick="fillQuery(this.textContent)">
-                Top 10 produits les mieux notés
+                Who directed and whote 'Memento'
               </span>
-              <span class="example-tag" onclick="fillQuery(this.textContent)">
-                Produit le moins cher
+               <span class="example-tag" onclick="fillQuery(this.textContent)">
+                List movies released between 2000 and 2010
               </span>
+
+               <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Give me one movie 2010
+              </span>
+
+                 <span class="example-tag" onclick="fillQuery(this.textContent)">
+                Give me the movie reted above 9
+              </span>
+              
 
               <!-- 🆕 EXEMPLES POUR L'ANALYSE DE REQUÊTES -->
               <span
@@ -641,14 +657,7 @@
                 onclick="fillQuery(this.textContent)"
                 style="border-color: #ff6b6b; color: #ff6b6b"
               >
-                Explique: db.products.find({rating: {$gt: 4}})
-              </span>
-              <span
-                class="example-tag"
-                onclick="fillQuery(this.textContent)"
-                style="border-color: #ff6b6b; color: #ff6b6b"
-              >
-                Que fait: HGETALL user:12345
+                explain: db.movies.countDocuments({})
               </span>
               <span
                 class="example-tag"

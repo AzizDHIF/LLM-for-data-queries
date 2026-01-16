@@ -1,7 +1,16 @@
+import sys
+import os
+
+# --- Ajouter la racine du projet au PYTHONPATH pour pouvoir importer `llm` ---
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(PROJECT_ROOT)
+
 import csv
 import redis
 import json
+
 from llm.redis_llm import GeminiClient, execute_redis_command  # ton client Gemini adapté Redis
+
  # exécuteur Redis similaire à Neo4jExecutor
 
 # --- Connexion à Redis ---

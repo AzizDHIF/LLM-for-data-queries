@@ -3,7 +3,6 @@ from google.genai import Client
 from connectors.api import load_gemini_config
 from utils.neo4j_llm_utils import detect_query_type
 
-
 # =========================
 # LOAD GEMINI CONFIG
 # =========================

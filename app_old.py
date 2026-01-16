@@ -9,7 +9,7 @@ from llm.mongodb_llm_old import (
 )
 
 # Importations Classifier
-from llm.classifier_old import (
+from llm.classifier import (
     init_groq_client,
     format_explanation_output,
     analyze_query,

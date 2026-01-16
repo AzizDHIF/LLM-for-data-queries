@@ -5,7 +5,7 @@ import json
 import yaml
 # Import MongoDB Executor et LLM
 from llm.mongodb_llm import generate_mongodb_query
-from llm.hbase_llm import *
+# from llm.hbase_llm import *
 from executers.rdf_executer import RDF_DATA
 from executers.mongodb_executer import MongoExecutor
 from llm.neo4j_llm import Neo4jExecutor, Neo4jSchemaExtractor, GeminiClient
@@ -13,9 +13,9 @@ from llm.rdf_llm import GeminiClientRDF
 from utils.neo4j_llm_utils import detect_query_type
 from connectors.api import load_gemini_config
 from llm.redis_llm import generate_redis_command, execute_redis_command, normalize_redis_command
-from app_all import *
-from app_all import MultiDBManager
-from llm.classifier_old import detect_database_language, analyze_query, detect_query_type1, normalize_nl_prefix
+from all_queries import *
+from all_queries import MultiDBManager
+from llm.classifier import detect_database_language, analyze_query, detect_query_type1, normalize_nl_prefix
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "secret-key-123")
 
@@ -318,17 +318,13 @@ def index():
                         redis_query = redis_command_to_string(redis_query)
                         
                         
-                    elif selected_db =="hbase":
-                        response = run_query(normalized_question)
-                        hbase_query = response["query"]
-                        results = response["preview_results"]
-                        from bson import json_util
-                        pretty_results = json.dumps(
-                            results,
-                            indent=4,
-                            default=json_util.default,
-                            ensure_ascii=False
-                        )
+                    # elif selected_db =="hbase":
+                    #     response= "movie_574eb0eb-d0f1-4341-b4bc-c139a4ea0105
+                    #         info:director = Lana Wachowski
+                    #         info:genres = Action
+                    #         info:ratings = 9.3
+                    #         info:title = The Matrix
+                    #         info:year = 1999"
 
                         response_text = generate_response_text(results)
                         
@@ -396,7 +392,7 @@ def index():
                                 mongo_query_dict['filter']['genre'] = genre_match.group(1)
                         
                         # Convertir en syntaxes des différentes bases
-                        from app_all import (
+                        from all_queries import (
                             convert_to_mongodb_syntax,
                             convert_to_redis_syntax,
                             convert_to_hbase_syntax,
