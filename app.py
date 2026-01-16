@@ -5,7 +5,7 @@ import json
 import yaml
 # Import MongoDB Executor et LLM
 from llm.mongodb_llm import generate_mongodb_query
-# from llm.hbase_llm import generate_hbase_query
+from llm.hbase_llm import *
 from executers.rdf_executer import RDF_DATA
 from executers.mongodb_executer import MongoExecutor
 from llm.neo4j_llm import Neo4jExecutor, Neo4jSchemaExtractor, GeminiClient
@@ -13,7 +13,6 @@ from llm.rdf_llm import GeminiClientRDF
 from utils.neo4j_llm_utils import detect_query_type
 from connectors.api import load_gemini_config
 from llm.redis_llm import generate_redis_command, execute_redis_command, normalize_redis_command
-from executers.hbase_executer import HBaseExecutor
 from app_all import *
 from app_all import MultiDBManager
 from llm.classifier_old import detect_database_language, analyze_query, detect_query_type1, normalize_nl_prefix
@@ -46,7 +45,7 @@ neo4j_schema_extractor = Neo4jSchemaExtractor(
 neo4j_schema = neo4j_schema_extractor.extract_schema()
 
 # Initialisation
-hbase_executor = HBaseExecutor(host='localhost', port=9090)
+# hbase_executor = HBaseExecutor(host='localhost', port=9090)
 
 
 # LLM Gemini pour NL -> Cypher
@@ -194,6 +193,7 @@ def index():
             
             else:
                 try:
+                    
                     if selected_db == "mongodb":
                         response = generate_mongodb_query(normalized_question)
                         if not response:
@@ -319,15 +319,22 @@ def index():
                         
                         
                     elif selected_db =="hbase":
-                        response = generate_hbase_query(normalized_question)
-                        hbase_query=response
-                        results = hbase_executor.run_query(response)
+                        response = run_query(normalized_question)
+                        hbase_query = response["query"]
+                        results = response["preview_results"]
                         from bson import json_util
-                        pretty_results = json.dumps(results, indent=4, default=json_util.default, ensure_ascii=False)
+                        pretty_results = json.dumps(
+                            results,
+                            indent=4,
+                            default=json_util.default,
+                            ensure_ascii=False
+                        )
+
                         response_text = generate_response_text(results)
                         
                     elif selected_db =="rdf":
                         rdf_query= gemini_client_rdf.generate_rdf(normalized_question, rdf_data.extract_ontology_from_fuseki())
+                        response_text = rdf_data.run_sparql_query(rdf_query)
                     
                     elif selected_db == "all":
                         # Essayer de générer la requête MongoDB

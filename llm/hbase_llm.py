@@ -8,135 +8,151 @@ from utils.neo4j_llm_utils import detect_query_type
 # LOAD GEMINI CONFIG
 # =========================
 config = load_gemini_config()
-API_KEY = config["api_key"]
+GEMINI_API_KEY = config["api_key"]
 MODEL = config.get("model", "gemini-2.5-pro")
 
+import happybase
+import json
+from google import genai
 
-# =========================
-# PROMPT BUILDER
-# =========================
+HBASE_HOST = "localhost"
+HBASE_PORT = 9090
+TABLE_NAME = "movies"
 
-def build_hbase_prompt(nl_query: str) -> str:
-    return (
-        "You are an HBase expert.\n\n"
-        "Generate ONLY a valid HBase shell query.\n"
-        "NO explanation. NO markdown. NO comments.\n\n"
+# Open HBase connection
+connection = happybase.Connection(HBASE_HOST, HBASE_PORT)
+connection.open()
+table = connection.table(TABLE_NAME)
 
-        "CRITICAL RULES:\n"
-        "- Use HBase shell syntax for queries\n"
-        "- For complex operations, use Scan with filters\n"
-        "- Use table name: 'movies'\n"
-        "- Columns are in format 'cf:column'\n"
-        "- Column families: 'info' and 'ratings'\n"
-        "- Row key format: name_year (e.g., 'Inception_2010')\n"
-        "- Use ONLY: scan, get, count, delete, put\n"
-        "- For filters, use: SingleColumnValueFilter, PrefixFilter, PageFilter, ColumnPrefixFilter\n"
-        "- NEVER invent fields\n"
-        "- Always specify column family explicitly\n\n"
+# Gemini client
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-        "Schema:\n"
-        "Table: movies\n"
-        "Row key: name_year\n"
-        "Column Families and columns:\n"
-        "  info:\n"
-        "    genre, released, votes, director, writer, star, country, budget, gross, company, runtime\n"
-        "  ratings:\n"
-        "    rating, score\n\n"
 
-        "Examples:\n\n"
+def translate_query(nl_query):
 
-        "Question: Get movies from year 2010\n"
-        "Output:\n"
-        "scan 'movies', {FILTER => \"PrefixFilter('_2010')\"}\n\n"
+    system_prompt = f"""
+You translate natural language queries into **HBase scan commands** in Python.
 
-        "Question: Count movies with score above 8\n"
-        "Output:\n"
-        "scan 'movies', {FILTER => \"SingleColumnValueFilter('ratings', 'score', >=, 'binary:8')\"}\n\n"
+Table: {TABLE_NAME}
+Column family: info
+Available columns:
+- info:title
+- info:genres
+- info:year
+- info:director
+- info:ratings
 
-        "Question: Get all movies directed by Christopher Nolan\n"
-        "Output:\n"
-        "scan 'movies', {FILTER => \"SingleColumnValueFilter('info', 'director', =, 'binary:Christopher Nolan')\"}\n\n"
-
-        "Question: Get movie details for Inception\n"
-        "Output:\n"
-        "get 'movies', 'Inception_2010'\n\n"
-
-        "Question: Get movies with rating higher than 8.5\n"
-        "Output:\n"
-        "scan 'movies', {FILTER => \"SingleColumnValueFilter('ratings', 'rating', >=, 'binary:8.5')\"}\n\n"
-
-        "Question: Get name and genre of all movies\n"
-        "Output:\n"
-        "scan 'movies', {COLUMNS => ['info:genre']}\n\n"
-
-        f"Question:\n\"{nl_query}\""
-    )
-    
-    
-def build_hbase_write_prompt(nl_query: str) -> str:
-    return f"""
-You are an expert HBase assistant.
-
-The database schema is:
-
-Table: movies
-Row key: name_year
-Column Families and columns:
-  info:
-    genre, released, votes, director, writer, star, country, budget, gross, company, runtime
-  ratings:
-    rating, score
-
-Your task is to translate the following natural language request into an HBase WRITE operation.
-
-You MUST answer in ONE of the following formats:
-
-1) If all the details about the write query are present and safe:
-format="HBASE:
-<hbase operation>"
-
-2) If any detail is missing:
-format="QUESTION:
-<question to ask the user>"
-
-Rules:
-
-- For PUT operations, use format: put 'table', 'rowkey', 'cf:column', 'value'
-- For multiple PUTs, separate them with newlines
-- For DELETE operations, use format: delete 'table', 'rowkey', 'cf:column'
-- For DELETE entire row: deleteall 'table', 'rowkey'
-- Do NOT assume missing values (especially year for row key)
-- Row key MUST be in format: name_year
-- Do NOT generate HBase if information is missing
-- Do NOT add explanations
-- You MUST start your answer with "QUESTION:" or "HBASE:"
-
-Natural language request:
-"{nl_query}"
+Instructions:
+- Return ONLY a Python HBase scan statement using `table.scan`.
+- Include relevant columns and a filter if the query has a condition.
+- For numeric comparisons on ratings, use a filter like:
+  "SingleColumnValueFilter('info', 'ratings', >=, 'binary:9')"
+- For string comparisons on title, use:
+  "SingleColumnValueFilter('info', 'title', =, 'binary:Metro')"
+- Include a limit (e.g., limit=10).
+- Example for a specific title: 
+  table.scan(
+      columns=[b'info:title', b'info:genres', b'info:year', b'info:director', b'info:ratings'],
+      filter=b"SingleColumnValueFilter('info', 'title', =, 'binary:Metro')",
+      limit=10
+  )
+- Do not include any extra explanation, markdown, or JSON formatting.
+- Return ONLY the executable Python code.
+- Filters must be bytes (prefix with b).
 """
 
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=nl_query,
+        config={
+            "system_instruction": system_prompt,
+            "temperature": 0.1,
+        }
+    )
+
+    query_str = response.text.strip()
+    
+    # Remove any markdown code blocks if present
+    if query_str.startswith("```"):
+        lines = query_str.split('\n')
+        query_str = '\n'.join(lines[1:-1]) if len(lines) > 2 else query_str
+    
+    # Remove any JSON array formatting
+    if query_str.startswith('[') and query_str.endswith(']'):
+        try:
+            parsed = json.loads(query_str)
+            if isinstance(parsed, list) and len(parsed) > 0:
+                query_str = parsed[0]
+        except:
+            pass
+    
+    return query_str
+def execute_query(query_str):
+
+    # Only provide `table` in eval namespace for safety
+    local_env = {"table": table}
+
+    # Evaluate the scan string and get results
+    rows = eval(query_str, {}, local_env)
+
+    # Convert to list
+    return list(rows)
 
 
-# =========================
-# GEMINI CALL
-# =========================
+def run_query(user_query):
+    query_str = translate_query(user_query)
+    results = execute_query(query_str)
 
-def generate_hbase_query(nl_query: str) -> str:
-    
-    client = Client(api_key=API_KEY)
-    query_type = detect_query_type(nl_query)
-    
-    if query_type == "read":
-        prompt = build_hbase_prompt(nl_query)
-        response = client.models.generate_content(model=MODEL, contents=prompt)
-        return response.text.replace("```", "").strip()
-    
-    if query_type == "write":
-        prompt = build_hbase_write_prompt(nl_query)
-        response = client.models.generate_content(model=MODEL, contents=prompt)
-        return response.text.replace("```", "").strip()
-    
-    # Default fallback
-    prompt = build_hbase_prompt(nl_query)
-    response = client.models.generate_content(model=MODEL, contents=prompt)
-    return response.text.replace("```", "").strip()
+    # Preview first 5 rows
+    preview = []
+    for i, row in enumerate(results):
+        if i >= 5:
+            break
+
+        # row should be a tuple (row_key, data)
+        if not isinstance(row, tuple) or len(row) != 2:
+            print(f"Warning: Unexpected row format: {row}")
+            continue
+
+        row_key, data = row
+        
+        # Check if data is actually a dictionary
+        if not isinstance(data, dict):
+            print(f"Warning: Data is not a dict, it's {type(data)}: {data}")
+            continue
+
+        row_dict = {}
+        for col, val in data.items():
+            try:
+                col_str = col.decode() if isinstance(col, bytes) else str(col)
+                val_str = val.decode() if isinstance(val, bytes) else str(val)
+                row_dict[col_str] = val_str
+            except Exception as e:
+                print(f"Warning: Could not decode {col}:{val} - {e}")
+                continue
+        
+        row_key_str = row_key.decode() if isinstance(row_key, bytes) else str(row_key)
+        preview.append({"row_key": row_key_str, "data": row_dict})
+
+    return {
+        "query": query_str,
+        "preview_results": preview
+    }
+
+
+# while True:
+#     user_query = input("Query> ").strip()
+
+#     output = run_query(user_query)
+
+#     print("\nGenerated HBase query:")
+#     print(output["query"])
+#     if not output["preview_results"]:
+#         print("No results found")
+#     else:
+#         for row in output["preview_results"]:
+#             print(f"\nRow: {row['row_key']}")
+#             for col, val in row["data"].items():
+#                 print(f"  {col} = {val}")
+
+# connection.close()

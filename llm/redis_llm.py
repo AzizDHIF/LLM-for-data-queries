@@ -19,7 +19,7 @@ client = Client(api_key=API_KEY)
 
 # Connect to Redis Stack (RediSearch enabled)
 r = redis.Redis(host="localhost", port=6379, decode_responses=True)
-print(r.keys("*"))
+# print(r.keys("*"))
 indexes = r.execute_command("FT._LIST")
 print("les indexes sont:", indexes)
 
