@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 import traceback
 from flask import Flask, render_template, request, session, redirect
@@ -488,3 +489,6 @@ def health_check():
 if __name__ == '__main__':
     print("🌐 Démarrage du serveur Flask sur http://localhost:5000")
     app.run(debug=True, host='0.0.0.0', port=5000)
+=======
+#app.py
+>>>>>>> 67bb5a635ebd5d1b3d845c6c9cb0c21044b31fa0
