@@ -45,7 +45,10 @@ Projet visant à **convertir des questions en langage naturel (NLP) en requêtes
 
 ---
 
-## Lancement avec Docker
+## Lancement avec projet
 
 ```bash
 docker compose up -d
+python app.py 
+
+
