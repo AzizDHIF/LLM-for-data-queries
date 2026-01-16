@@ -4,7 +4,7 @@ from google import genai
 
 HBASE_HOST = "localhost"
 HBASE_PORT = 9090
-GEMINI_API_KEY = "AIzaSyCxn0IfMlu3EcZbMEm1EsbPPU9arQYyHcI"
+GEMINI_API_KEY = "key"
 TABLE_NAME = "movies"
 
 # Open HBase connection
@@ -19,7 +19,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 def translate_query(nl_query):
 
     system_prompt = f"""
-You translate natural language queries into HBase scan parameters.
+You translate natural language queries into **HBase scan commands** in Python.
 
 Table: {TABLE_NAME}
 Column family: info
@@ -31,25 +31,23 @@ Available columns:
 - info:ratings
 
 Instructions:
-- Return ONLY valid JSON.
-- The JSON must always have:
-  - "columns": a list of fully qualified columns relevant to the query
-  - "limit": an integer (maximum number of rows to return)
-- If the query includes a condition (e.g., "movies rated above 7"), include a "filter" field:
-  Example: 
-    "filter": "SingleColumnValueFilter('info','ratings',>, 'binary:7')"
-- Always use a scan (no get).
-- Do NOT include any extra fields or comments.
-- Use the following JSON as an example, adapt columns and filters based on the query:
-
-Example:
-{{
-  "columns": ["info:title", "info:ratings"],
-  "limit": 10,
-  "filter": "SingleColumnValueFilter('info','ratings',>, 'binary:7')"
-}}
+- Return ONLY a Python HBase scan statement using `table.scan`.
+- Include relevant columns and a filter if the query has a condition.
+- For numeric comparisons on ratings, use a filter like:
+  "SingleColumnValueFilter('info', 'ratings', >=, 'binary:9')"
+- For string comparisons on title, use:
+  "SingleColumnValueFilter('info', 'title', =, 'binary:Metro')"
+- Include a limit (e.g., limit=10).
+- Example for a specific title: 
+  table.scan(
+      columns=[b'info:title', b'info:genres', b'info:year', b'info:director', b'info:ratings'],
+      filter=b"SingleColumnValueFilter('info', 'title', =, 'binary:Metro')",
+      limit=10
+  )
+- Do not include any extra explanation, markdown, or JSON formatting.
+- Return ONLY the executable Python code.
+- Filters must be bytes (prefix with b).
 """
-
 
     response = client.models.generate_content(
         model="gemini-2.0-flash",
@@ -57,63 +55,86 @@ Example:
         config={
             "system_instruction": system_prompt,
             "temperature": 0.1,
-            "response_mime_type": "application/json"
         }
     )
 
-    return json.loads(response.text)
+    query_str = response.text.strip()
+    
+    # Remove any markdown code blocks if present
+    if query_str.startswith("```"):
+        lines = query_str.split('\n')
+        query_str = '\n'.join(lines[1:-1]) if len(lines) > 2 else query_str
+    
+    # Remove any JSON array formatting
+    if query_str.startswith('[') and query_str.endswith(']'):
+        try:
+            parsed = json.loads(query_str)
+            if isinstance(parsed, list) and len(parsed) > 0:
+                query_str = parsed[0]
+        except:
+            pass
+    
+    return query_str
+def execute_query(query_str):
 
-def execute_query(query_plan):
-    """
-    Executes an HBase scan based on the query plan.
-    """
-    columns = [c.encode() for c in query_plan.get("columns", [])]
-    limit = query_plan.get("limit", 10)
-    filter_str = query_plan.get("filter")  # New: optional filter from plan
+    # Only provide `table` in eval namespace for safety
+    local_env = {"table": table}
 
-    rows = table.scan(columns=columns, limit=limit, filter=filter_str)
+    # Evaluate the scan string and get results
+    rows = eval(query_str, {}, local_env)
+
+    # Convert to list
     return list(rows)
 
 
-
 def run_query(user_query):
-    """
-    Given a natural language query, return both the query plan
-    and a preview of the results.
-    """
-    query_plan = translate_query(user_query)
-    results = execute_query(query_plan)
+    query_str = translate_query(user_query)
+    results = execute_query(query_str)
 
     # Preview first 5 rows
     preview = []
-    for i, (row_key, data) in enumerate(results):
+    for i, row in enumerate(results):
         if i >= 5:
             break
-        row_dict = {col.decode(): val.decode() for col, val in data.items()}
-        preview.append({"row_key": row_key.decode(), "data": row_dict})
+
+        # row should be a tuple (row_key, data)
+        if not isinstance(row, tuple) or len(row) != 2:
+            print(f"Warning: Unexpected row format: {row}")
+            continue
+
+        row_key, data = row
+        
+        # Check if data is actually a dictionary
+        if not isinstance(data, dict):
+            print(f"Warning: Data is not a dict, it's {type(data)}: {data}")
+            continue
+
+        row_dict = {}
+        for col, val in data.items():
+            try:
+                col_str = col.decode() if isinstance(col, bytes) else str(col)
+                val_str = val.decode() if isinstance(val, bytes) else str(val)
+                row_dict[col_str] = val_str
+            except Exception as e:
+                print(f"Warning: Could not decode {col}:{val} - {e}")
+                continue
+        
+        row_key_str = row_key.decode() if isinstance(row_key, bytes) else str(row_key)
+        preview.append({"row_key": row_key_str, "data": row_dict})
 
     return {
-        "query_plan": query_plan,
+        "query": query_str,
         "preview_results": preview
     }
 
 
-# Main loop
-print("\n🤖 HBase Natural Language Assistant")
-print("Type a query or 'exit'\n")
-
 while True:
     user_query = input("Query> ").strip()
 
-    if user_query.lower() in ("exit", "quit"):
-        break
-
     output = run_query(user_query)
 
-    print("\nGenerated HBase plan:")
-    print(json.dumps(output["query_plan"], indent=2))
-
-    print("\nPreview of results:")
+    print("\nGenerated HBase query:")
+    print(output["query"])
     if not output["preview_results"]:
         print("No results found")
     else:
@@ -123,4 +144,3 @@ while True:
                 print(f"  {col} = {val}")
 
 connection.close()
-print("\n✓ Connection closed")
